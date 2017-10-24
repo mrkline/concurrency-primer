@@ -1035,12 +1035,6 @@ if thread \textit{W} stores a value with release semantics,
 and thread \textit{R} loads that value with acquire semantics,
 then all writes made by \textit{W} before its store-release are observable to
 \textit{R} after its load-acquire.
-\begin{colfigure}
-\centering
-\includegraphics[keepaspectratio,width=0.9\linewidth]{acquire-release}
-\captionof{figure}{An acquire and a release operation work together as a pair.}
-\label{acquire-release}
-\end{colfigure}
 If this sounds familiar, it's exactly what we were trying to achieve in
 \secref{background} and \secref{seqcst}:
 \begin{colfigure}
@@ -1389,9 +1383,7 @@ by Herb Sutter,
 a three-hour talk that provides
 a more thorough dive on the concepts discussed here.
 Also the source of figures
-\ref{ideal-machine},
-\ref{dunnington},
-and \ref{acquire-release}.
+\ref{ideal-machine} and \ref{dunnington}.
 
 \href{https://www.akkadia.org/drepper/futex.pdf}{\textit{Futexes are Tricky}},
 a paper by Ulrich Drepper on how mutexes and other synchronization primitives
