@@ -254,7 +254,7 @@ On multiprocessors, several can run in parallel, each on its own core.
 While computer scientists have invented many useful abstractions,
 these instruction streams (let's call them \emph{threads} from here on out for
 the sake of brevity) ultimately interact with one another by sharing bits of state.
-For these interactions to work, we must be able to reason about
+For this to work, we must be able to reason about
 the order of reads and writes that communicating threads make to memory.
 Consider a simple example where some thread \textit{A} shares
 an integer with other threads.
@@ -476,8 +476,7 @@ the first thread could be halfway through writing the counter
 when the second thread reads it, receiving an incorrect value.
 These unfortunate occasions are called \introduce{torn reads and writes.}
 
-From this example we can see why we need atomic reads and writes
-to synchronize threads.
+To avoid them, we need atomic reads and writes to synchronize threads.
 We can also see that, compared to the difficulties of establishing order,
 ensuring atomicity is fairly straightforward:
 make sure that variables used for thread synchronization are no larger than
@@ -645,14 +644,16 @@ std::atomic<TaskState> ts;
 
 void taskLoop()
 {
-  ts = running;
-  while (ts == running) { /* ... */ }
+  ts = TaskState::Running;
+  while (ts == TaskState::Running) {
+    // Do good work.
+  }
 }
 \end{minted}
 \end{colfigure}
-Say we only want to set \texttt{ts} to \texttt{Cancelled} if it's
-currently \texttt{Running}, but do nothing if it's already \texttt{Idle}.
-This is trivial with a \textsc{cas}:
+If we only want to set \texttt{ts} to \texttt{Cancelled} if it's
+currently \texttt{Running}, but do nothing if it's already \texttt{Idle},
+we could \textsc{cas}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 bool cancel()
@@ -663,13 +664,6 @@ bool cancel()
 }
 \end{minted}
 \end{colfigure}
-
-\subsection{Practical applications}
-
-Some of these examples might seem a bit contrived,
-but atomic \textsc{rmw} operations are the building blocks for all sorts of
-lock-free data structures and algorithms,
-along with the blocking concurrency primitives we know and love.
 
 \section{Lock-free does not mean “faster”}
 
@@ -683,15 +677,15 @@ On the other hand, if you find yourself in an interrupt service routine,
 or processing audio in real time,
 locks are not an option.
 Blocking in these cases would be disastrous,
-so a lock-free approach is your only recourse.
+so a lock-free approach is your only hope.
 
-Of course, there are many situations where blocking
+Of course, there are situations where blocking
 and non-blocking approaches could both work.\punckern\footnote{You
 may also hear of \introduce{wait-free} algorithms---they are a subset of
 lock-free ones which are guaranteed to complete in some
 bounded number of steps.}
 If performance is a concern, \emph{profile!}
-There are no easy answers here---how well a given synchronization method will
+How well a given synchronization method will
 perform depends on a number of factors, ranging from the number of threads at
 play to the specifics of your \textsc{cpu} hardware.
 And as always, consider the complexity versus performance
@@ -703,12 +697,11 @@ with a proud tradition of code that is ever so subtly wrong.
 
 As mentioned in \secref{seqcst}, different hardware architectures
 provide different ordering guarantees, or \introduce{memory models}.
-x64, for example, has a relatively \introduce{strongly-ordered} model---while
-the \textsc{cpu} will aggressively rearrange your program,
-it can mostly be trusted to preserve some system-wide order of
+For example, x64 is relatively \introduce{strongly-ordered},
+and can usually be trusted to preserve some system-wide order of
 loads and stores.
-Other architectures like \textsc{arm} have a \introduce{weakly-ordered}
-model, where one should make very few assumptions that loads and stores are in
+Other architectures like \textsc{arm} are more \introduce{weakly-ordered,}
+so one should make very few assumptions that loads and stores are in
 program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
 
@@ -800,7 +793,6 @@ since the processor can context switch to some other thread
 between any two instructions.
 We need something special: load-link and store-conditional
 \textsc{(ll/sc)}.
-
 The two work in tandem:
 A load-link reads a value from a given address
 (just like any other load), but also instructs the processor to monitor
@@ -808,15 +800,13 @@ that address.
 Store-conditional instructions write the given
 value \emph{only if} no other stores were made to that address
 since the corresponding load-link.
-Let's see an example.
-Consider an atomic fetch and add:
+As an example, let's look at an atomic fetch and add:
 \begin{colfigure}
+On \textsc{arm},
 \begin{minted}[fontsize=\codesize]{cpp}
 void incFoo() { ++foo; }
 \end{minted}
-\end{colfigure}
-\begin{colfigure}
-On \textsc{arm}, this compiles to:
+compiles to:
 \begin{lstlisting}[language={[ARM]Assembler}]
 incFoo:
   ldr r3, <&foo>
@@ -1002,12 +992,6 @@ You can think of these two as ``one-way'' barriers:
 the former allows other reads and writes to move past it in a $before \to after$
 direction, and the latter works the opposite way,
 letting them move $after \to before$.
-\begin{colfigure}
-\centering
-\includegraphics[keepaspectratio,width=0.9\linewidth]{acquire-release}
-\captionof{figure}{An acquire and a release operation work together as a pair.}
-\label{acquire-release}
-\end{colfigure}
 On \textsc{arm} and other weakly-ordered architectures, this allows us to drop
 one of the memory barriers:
 
@@ -1024,9 +1008,8 @@ void releaseFoo(int i)
 }
 \end{minted}
 \end{colfigure}
-\begin{colfigure}
 become
-
+\begin{colfigure}
 \begin{minipage}{0.45\linewidth}
 \begin{lstlisting}[language={[ARM]Assembler}]
 acquireFoo:
@@ -1052,7 +1035,13 @@ if thread \textit{W} stores a value with release semantics,
 and thread \textit{R} loads that value with acquire semantics,
 then all writes made by \textit{W} before its store-release are observable to
 \textit{R} after its load-acquire.
-We can use this pairing for our very first example from
+\begin{colfigure}
+\centering
+\includegraphics[keepaspectratio,width=0.9\linewidth]{acquire-release}
+\captionof{figure}{An acquire and a release operation work together as a pair.}
+\label{acquire-release}
+\end{colfigure}
+If this sounds familiar, it's exactly what we were trying to achieve in
 \secref{background} and \secref{seqcst}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -1064,10 +1053,7 @@ void threadA()
   v = 42;
   v_ready.store(true, memory_order_release);
 }
-\end{minted}
-\end{colfigure}
-\begin{colfigure}
-\begin{minted}[fontsize=\codesize]{cpp}
+
 void threadB()
 {
   while (!v_ready.load(memory_order_acquire)) {
