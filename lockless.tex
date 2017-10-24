@@ -139,7 +139,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
-\date{October 23, 2017}
+\date{October 24, 2017}
 
 % Custom footer
 % Hyperlinks
@@ -440,7 +440,7 @@ In our example, \monobox{v = 42}\, is now guaranteed to happen before
 just as \monobox{my\_v = v}\, must occur after reading \monobox{v\_ready}\,
 in thread~\textit{B.}
 
-Formally, these types ensure a \textit{single total modification order}
+Formally, these types provide a \textit{single total modification order}
 such that,
 ``[\ldots] the result of any execution is the same as if the reads and writes
 occurred in some order, and the operations of each individual
@@ -993,7 +993,7 @@ the former allows other reads and writes to move past it in a $before \to after$
 direction, and the latter works the opposite way,
 letting them move $after \to before$.
 On \textsc{arm} and other weakly-ordered architectures, this allows us to drop
-one of the memory barriers:
+one of the memory barriers in each operation, such that
 
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -1008,7 +1008,7 @@ void releaseFoo(int i)
 }
 \end{minted}
 \end{colfigure}
-become
+become:
 \begin{colfigure}
 \begin{minipage}{0.45\linewidth}
 \begin{lstlisting}[language={[ARM]Assembler}]
