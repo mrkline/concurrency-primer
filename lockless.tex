@@ -194,7 +194,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \newenvironment{colfigure}
   {\par\bigskip\noindent\minipage{\linewidth}}
-  {\endminipage\bigskip}
+  {\endminipage\vspace*{\bigskipamount}} % Add skip, even at end of column.
 
 % Spend a bit more time to get better word spacing.
 % See http://tex.stackexchange.com/a/52855/92465
