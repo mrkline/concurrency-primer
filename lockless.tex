@@ -260,10 +260,38 @@ Consider a simple example where some thread \textit{A} shares
 an integer with other threads.
 It writes the value to some variable,
 then sets a flag to instruct others to read whatever it just stored.
-Our system must guarantee that other threads observe \textit{A's} write to the
-flag only \emph{after A's} write to the integer.
-(If another thread can observe a change to the flag before it observes a change
-to the integer, it could ``see'' an incorrect value,
+As code, this might resemble:
+\begin{colfigure}
+\begin{minted}[fontsize=\codesize]{cpp}
+int v;
+bool v_ready = false;
+
+void threadA()
+{
+  // Write the value
+  // and set its ready flag.
+  v = 42;
+  v_ready = true;
+}
+\end{minted}
+\end{colfigure}
+\begin{colfigure}
+\begin{minted}[fontsize=\codesize]{cpp}
+void threadB()
+{
+  // Await a value change and read it.
+  while (!v_ready) { /* spin */ }
+  const int my_v = v;
+  // Do something with my_v...
+}
+\end{minted}
+\end{colfigure}
+Our system must guarantee that other threads observe \textit{A's} write to
+\texttt{v\_ready}
+only \emph{after A's} write to \texttt{v}.
+(If another thread can observe a change to \texttt{v\_ready}
+before it observes a change to the integer,
+it could ``see'' an incorrect value,
 keeping us from reliably exchanging information.)
 
 This appears to be an incredibly simple guarantee to provide,
@@ -375,39 +403,31 @@ almost verbatim, from the \cpp{11} standard. Everything you see here
 should be identical in both languages, barring some arguably cleaner syntax in
 \cpp{}.}
 
-Let's return to our simple example from before.
-A naïve programmer, blissfully unaware of the challenges we've discussed,
-might write:
+Let's return to our example from before.
+For it to work as-desired, we need to use an
+\introduce{atomic type} for the flag:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
-int v;
-bool v_ready = false;
-
-void threadA()
-{
-  // Write the value
-  // and set its ready flag.
-  v = 42;
-  v_ready = true;
-}
+int v = 0;
+std::atomic_bool v_ready(false);
 \end{minted}
 \end{colfigure}
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
+void threadA()
+{
+  v = 42;
+  v_ready = true;
+}
+
 void threadB()
 {
-  // Await a value change and read it.
   while (!v_ready) { /* spin */ }
   const int my_v = v;
   // Do something with my_v...
 }
 \end{minted}
 \end{colfigure}
-For this to work as-desired, all we need to do is use an
-\introduce{atomic type} for the flag:
-\begin{minted}[fontsize=\codesize]{cpp}
-std::atomic_bool v_ready(false);
-\end{minted}
 The C and \cpp{} standard libraries define a series of these types
 in \mintinline{c}{<stdatomic.h>} or \mintinline{cpp}{<atomic>}, respectively.
 They look and act just like the integer types they mirror
@@ -737,7 +757,8 @@ getFoo:
   bx lr
 \end{lstlisting}
 \end{minipage}
-
+%\end{colfigure}
+%\begin{colfigure}
 \begin{minipage}{0.35\linewidth}
 \begin{minted}[fontsize=\codesize]{cpp}
 void setFoo(int i)
