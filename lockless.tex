@@ -139,7 +139,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
-\date{October 26, 2017}
+\date{October 27, 2017}
 
 % Custom footer
 % Hyperlinks
@@ -290,7 +290,7 @@ Our system must guarantee that other threads observe \textit{A's} write to
 \texttt{v\_ready}
 only \emph{after A's} write to \texttt{v}.
 (If another thread can observe a change to \texttt{v\_ready}
-before it observes a change to the integer,
+before the integer's new value is observable,
 it could ``see'' an incorrect value,
 keeping us from reliably exchanging information.)
 
@@ -299,7 +299,7 @@ but nothing is as it seems.
 For starters, any compiler worth its salt will
 happily modify and reorder your code to take better advantage of the hardware
 it runs on.
-So long as the resulting instructions will run to the same effect
+So long as the resulting instructions run to the same effect
 \emph{for the current thread,}
 reads and writes can be moved to avoid pipeline stalls\footnote{%
 Most \textsc{cpu} designs execute parts of several instructions in parallel
@@ -321,7 +321,7 @@ especially common when using profile-guided optimization.}
 
 Even if we used a compiler that didn't reorder our code,
 we'd still in trouble, since our hardware does it too!
-Modern desktop and server \textsc{cpu} designs handle incoming instructions in
+Modern \textsc{cpu} designs handle incoming instructions in
 a \emph{much} more complicated fashion than traditional pipelined approaches
 like the one shown in \fig{pipeline}.
 They contain multiple data paths, each for different types of instructions,
@@ -482,7 +482,7 @@ our problem disappears.
 We can also see that, compared to the difficulties of establishing order,
 ensuring atomicity is fairly straightforward:
 make sure that variables used for thread synchronization are no larger than
-the architecture's native word size.
+the architecture's word size.
 
 \section{Arbitrarily-sized “atomic” types}
 
@@ -549,8 +549,8 @@ we could still run into the following race condition:
 \item The \textsc{ui} thread now zeroes the counter, and the previous increment
     is lost.
 \end{enumerate}
-If the \textsc{ui} thread atomically exchanges the current
-value of the counter with zero, the race disappears.
+If the \textsc{ui} thread exchanges the current
+value of the counter with zero atomically, the race disappears.
 
 \subsection{Test and set}
 
@@ -708,7 +708,7 @@ program order unless the \textsc{cpu} is given special instructions---called
 
 It's helpful to look at how atomic operations work in a weakly-ordered system,
 both to gain a better understanding of what's happening in hardware,
-and to understand why the \clang{} and \cpp{} models were designed as they
+and to see why the \clang{} and \cpp{} models were designed as they
 were.\punckern\footnote{It's worth noting that the concepts we discuss here aren't
 oddities specific to \clang{} and \cpp{}.
 Newer systems programming languages like D and Rust have converged on
@@ -794,8 +794,8 @@ How do we make them atomic?
 Normal loads and stores won't do,
 since the processor can context switch to some other thread
 between any two instructions.
-We need something special: load-link and store-conditional
-\textsc{(ll/sc)}.
+We need something special:
+\introduce{load-link} and \introduce{store-conditional} \textsc{(ll/sc)}.
 The two work in tandem:
 A load-link reads a value from a given address
 (just like any other load), but also instructs the processor to monitor
@@ -868,7 +868,7 @@ void atomicMultiply(int by)
 If we use \monobox{compare\_exchange\_strong} here,
 the compiler must emit nested loops:
 an inner one to protect us from spurious \textsc{sc} failures,
-and an outer one which repeatedly loads and multiplies values of \texttt{foo} until no
+and an outer one which repeatedly loads and multiplies \texttt{foo} until no
 other thread has modified it.
 With \monobox{compare\_exchange\_weak},
 the compiler is free to generate a single loop instead,
@@ -879,13 +879,12 @@ ones caused by another thread modifying \texttt{foo}.
 \label{lock-example}
 
 All of our examples so far have used sequentially consistent reads and writes
-to prevent memory accesses from being rearranged in ways that break our
-programs.
+to prevent memory accesses from being rearranged in ways that break our code.
 We've also seen how weakly-ordered architectures like \textsc{arm}
-ensure this guarantee using a pair of memory barriers.
-As you might expect, these barriers can have a non-trivial impact on performance
-since they inhibit optimizations that your compiler and hardware would otherwise
-make.
+use a pair of memory barriers to provide this guarantee.
+As you might expect, these barriers can have a non-trivial impact on performance.
+After all,
+they inhibit optimizations that your compiler and hardware would otherwise make.
 
 What if we could avoid some of this slowdown?
 Consider some simple case like the spinlock from \secref{spinlock}.
@@ -893,7 +892,7 @@ Between the \texttt{lock()} and \texttt{unlock()} calls,
 we have a \introduce{critical section}
 where we can safely modify shared state protected by the lock.
 Outside this critical section,
-we read and write to things that aren't
+we only read and write to things that aren't
 shared with other threads.
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -929,7 +928,7 @@ unlock(); // Unlock; critical section ends
 \end{colfigure}
 So, how do we tell the compiler as much?
 
-\section{Memory orders}
+\section{Memory orderings}
 
 By default, all atomic operations---including loads, stores,
 and the various flavors of \textsc{rmw}---are sequentially consistent.
@@ -945,7 +944,8 @@ is:
 \item Acquire-Release (\monobox{memory\_order\_acq\_rel})
 \item Consume (\monobox{memory\_order\_consume})
 \end{itemize}
-To specify an order, you provide it as an optional argument that we've slyly
+To specify one of these orderings,
+you provide it as an optional argument that we've slyly
 failed to mention so far:\footnote{\clang, being \clang,
 defines separate functions for cases where you want to specify an ordering.
 \texttt{exchange()} becomes \texttt{exchange\_explicit()}, a \textsc{cas}
@@ -974,7 +974,7 @@ int i = foo.load(memory_order_acquire);
 \end{minted}
 \end{colfigure}
 Compare-and-swap operations are a bit odd in that they have \emph{two}
-orders: one for when the \textsc{cas} succeeds, and one for when it fails:
+orderings: one for when the \textsc{cas} succeeds, and one for when it fails:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 while (!foo.compare_exchange_weak(
@@ -992,12 +992,12 @@ need sequentially consistent operations.
 
 \subsection{Acquire and release}
 
-We've already seen acquire and release in action with the lock example in
-\secref{lock-example}.
+We've already seen acquire and release in action with the lock example
+we just covered in \secref{lock-example}.
 You can think of these two as ``one-way'' barriers:
 the former allows other reads and writes to move past it in a $before \to after$
 direction, and the latter works the opposite way,
-letting them move $after \to before$.
+letting others move $after \to before$.
 On \textsc{arm} and other weakly-ordered architectures, this allows us to drop
 one of the memory barriers in each operation, such that
 
@@ -1066,23 +1066,22 @@ void threadB()
 
 \subsection{Relaxed}
 
-Relaxed atomic operations are needed when a variable will be shared between threads,
-but \emph{no ordering} is required.
+Relaxed atomic operations are used when a variable will be shared between threads,
+but \emph{no specific order} is required.
 \begin{colfigure}
 \centering
 \includegraphics[keepaspectratio,width=0.5\linewidth]{oppenheimer}
 \captionof{figure}{Relaxed atomic operations circa 1946}
 \label{oppenheimer}
 \end{colfigure}
-This might seem useless at first glance, but has several common
-applications.
+This might seem like a rare occurrence,
+but is surprisingly common.
 Recall our examples from \secref{atomicity} and \secref{rmw} where some worker
 thread increments a counter which is read by a \textsc{ui} thread to show
 progress.
 That counter could be incremented with
 \texttt{atomic\_fetch\_add()} using \texttt{memory\_order\_relaxed}.
-All we need is atomicity---nothing is ordered or synchronized
-by the counter.
+All we need is atomicity---nothing is synchronized by the counter.
 
 Relaxed reads and writes are also useful for sharing flags between threads.
 Consider some thread that loops until told to exit:
@@ -1108,7 +1107,7 @@ int main()
 \end{colfigure}
 We don't care if the contents of the loop are rearranged around the load.
 Nothing bad will happen so long as \texttt{stop} only indicates that the
-worker should exit and doesn't ``announce'' any sort of new data that will be
+worker should exit and doesn't ``announce'' any new data to be
 read by the worker.
 
 Finally, relaxed loads are commonly used with \textsc{cas} loops.
@@ -1129,13 +1128,16 @@ void atomicMultiply(int by)
 \end{colfigure}
 All of the loads can be relaxed, as we don't need to enforce any sort of ordering
 until we've successfully modified our value.
+The initial load of \texttt{expected} isn't even strictly necessary---it just
+saves us a loop iteration if no other thread modifies \texttt{foo} before the
+\textsc{cas}.
 
 \subsection{Acquire-Release}
 
 \texttt{memory\_order\_acq\_rel} is used with atomic \textsc{rmw} operations
 that need to both load-acquire \emph{and} store-release a value.
-A typical example is thread-safe reference counting, like in \cpp{}'s
-\mintinline{cpp}{shared_ptr}:
+A typical example involves thread-safe reference counting,
+like in \cpp{}'s \mintinline{cpp}{shared_ptr}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 atomic_int refCount;
@@ -1152,7 +1154,8 @@ void dec()
 {
   if (refCount.fetch_sub(1,
       memory_order_acq_rel) == 1) {
-      // No more references; clean up
+      // No more references.
+      // Delete the data.
   }
 }
 \end{minted}
@@ -1162,7 +1165,7 @@ Order doesn't matter when incrementing the reference
 count since no action is taken as a result.
 However, when we decrement, we must ensure that:
 \begin{enumerate}
-\item All reads and writes to the object being reference-counted happen
+\item All reads and writes to the referenced object happen
 \emph{before} the count reaches zero.
 \item Deletion occurs \emph{after} the reference count drops to
     zero.\punckern\footnote{This can be optimized even further by
@@ -1200,7 +1203,7 @@ experts-only construct we have in the language.
 Last but not least, we have \texttt{memory\_order\_consume}.
 Consider a scenario where data is rarely changed,
 but frequently read by multiple threads.
-Perhaps it is a pointer in the kernel to information about the peripherals
+Perhaps it is a pointer in the kernel to information about peripherals
 plugged into the machine.
 This data will change \emph{very} infrequently,
 so it makes sense to optimize reads as much as possible.
@@ -1209,13 +1212,13 @@ Given what we know so far, the best we can do is:
 \begin{minted}[fontsize=\codesize]{cpp}
 std::atomic<PeripheralData*> peripherals;
 
-// A writer:
+// Writers:
 PeripheralData* p = kAllocate(sizeof(*p));
 populateWithNewDeviceData(p);
 peripherals.store(p, memory_order_release);
 \end{minted}
 \begin{minted}[fontsize=\codesize]{cpp}
-// A reader:
+// Readers:
 PeripheralData* p =
     peripherals.load(memory_order_acquire);
 if (p != nullptr) {
@@ -1225,17 +1228,17 @@ if (p != nullptr) {
 \end{colfigure}
 
 Since we're trying to optimize readers as much as possible,
-it would be really nice if we could avoid a memory barrier when reading
+it would be really nice if we could avoid a memory barrier
 on weakly-ordered systems.
 As it turns out, we usually can.
 Since the data we examine (\texttt{p->keyboards})
 is \emph{dependent} on the value of \texttt{p},
-most platforms---even weakly-ordered ones---cannot make the initial
-load (\mintinline{cpp}{p = peripherals}) take place after its use
+most platforms---even weakly-ordered ones---cannot reorder the initial
+load (\mintinline{cpp}{p = peripherals}) to take place after its use
 (\mintinline{cpp}{p->keyboards}).\punckern\footnote{Much to everybody's chagrin,
 this \emph{isn't} the case on some extremely weakly-ordered architectures like
 DEC Alpha.}
-So long as we can convince the compiler not to make any similar speculations,
+So long as we convince the compiler not to make any similar speculations,
 we're in the clear.
 
 This is what \monobox{memory\_order\_consume} is for.
@@ -1335,7 +1338,7 @@ while (tmp = foo.load(memory_order_relaxed) {
 \end{minted}
 \end{colfigure}
 In some cases, ``fusing'' reads or writes like this is unacceptable,
-so it must be prevented
+so we must prevent it
 with \mintinline{cpp}{volatile} casts or incantations like
 \mintinline{cpp}{asm volatile("" ::: "memory")}.\punckern\footnote{See
 \url{https://stackoverflow.com/a/14983432}.}
@@ -1349,7 +1352,7 @@ for details.}
 \section{Takeaways}
 
 We've only scratched the surface here,
-but we've hopefully provided an understanding of:
+but hopefully you now know:
 \begin{itemize}
 \item Why compilers and \textsc{cpu} hardware reorder loads and stores.
 \item Why we need special tools to prevent these reorderings
@@ -1358,13 +1361,13 @@ but we've hopefully provided an understanding of:
 \item Atomic \introduce{read-modify-write} operations.
 \item How atomic operations can be implemented on weakly-ordered hardware,
     and what implications this can have for a language-level \textsc{api}.
-\item How we can \emph{carefully} optimize our lockless code using alternative
+\item How we can \emph{carefully} optimize lockless code using alternative
     memory orderings.
-\item How the compiler might optimize our atomic operations even further,
+\item How the compiler might optimize atomic operations even further,
     and what we can do to prevent certain undesirable optimizations.
 \end{itemize}
 To learn more, see the additional resources below,
-or examine some lock-free data structures and algorithms,
+or examine lock-free data structures and algorithms,
 such as a \introduce{single-producer/single-consumer}
 \textsc{(sp/sc)} queue or \introduce{read-copy-update}
 \textsc{(rcu)}.\punckern\footnote{See the Linux Weekly News article,
