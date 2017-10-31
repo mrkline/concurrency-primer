@@ -139,7 +139,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
-\date{October 27, 2017}
+\date{October 31, 2017}
 
 % Custom footer
 % Hyperlinks
@@ -214,7 +214,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \runauthor
 \smallskip
 
-\today
+\rundate
 \end{center}
 \bigskip
 
@@ -289,10 +289,8 @@ void threadB()
 Our system must guarantee that other threads observe \textit{A's} write to
 \texttt{v\_ready}
 only \emph{after A's} write to \texttt{v}.
-(If another thread can observe a change to \texttt{v\_ready}
-before the integer's new value is observable,
-it could ``see'' an incorrect value,
-keeping us from reliably exchanging information.)
+(If another thread can ``see'' \texttt{v\_ready} change before it sees \texttt{v}
+change, our communication scheme can't work.)
 
 This appears to be an incredibly simple guarantee to provide,
 but nothing is as it seems.
@@ -966,7 +964,7 @@ void unlock()
 }
 \end{minted}
 \end{colfigure}
-Non-sequentially consistent loads and stores use member functions of
+Non-sequentially consistent loads and stores also use member functions of
 \mintinline{cpp}{std::atomic<>}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -992,8 +990,8 @@ need sequentially consistent operations.
 
 \subsection{Acquire and release}
 
-We've already seen acquire and release in action with the lock example
-we just covered in \secref{lock-example}.
+We've just seen acquire and release in action with the
+lock example from \secref{lock-example}.
 You can think of these two as ``one-way'' barriers:
 the former allows other reads and writes to move past it in a $before \to after$
 direction, and the latter works the opposite way,
@@ -1306,7 +1304,7 @@ Since most programming languages have converged on the memory model we've been
 exploring, \textsc{arm}v8 processors offer dedicated load-acquire
 and store-release instructions, \keyword{lda} and \keyword{stl}.
 We can use them to implement everything we've discussed here without
-resorting to memory barriers---even sequentially consistent operations.
+resorting to memory barriers.
 Hopefully, future \textsc{cpu} architectures will follow suit.
 
 \section{Optimizations}
