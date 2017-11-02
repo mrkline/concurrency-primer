@@ -304,7 +304,7 @@ Most \textsc{cpu} designs execute parts of several instructions in parallel
 to increase their clock speed (see \fig{pipeline}).
 When the result of an instruction is needed by
 another instruction in the pipeline, the \textsc{cpu} may need
-to suspend forward progress, or \introduce{stall,} until that result is ready.}
+to suspend forward progress, or \introduce{stall}, until that result is ready.}
 or to improve locality.\punckern\footnote{%
 \textsc{ram} is not read in single bytes, but in chunks called cache lines.
 If variables that are used together can be placed on the same cache line,
@@ -473,7 +473,7 @@ since two loads or stores are needed to read or write the entire value.
 If we're having a particularly unlucky time,
 the first thread could be halfway through writing the counter
 when the second thread reads it, receiving an incorrect value.
-These unfortunate occasions are called \introduce{torn reads and writes.}
+These unfortunate occasions are called \introduce{torn reads and writes}.
 
 If reads and writes to shared data are atomic, however,
 our problem disappears.
@@ -523,7 +523,7 @@ static_assert(
 Loads and stores are all well and good,
 but sometimes we need to read a value, modify it,
 and write it back in a single atomic step.
-There are a few common \introduce{read-modify-write} \textsc{(rmw)} operations.
+There are a few common \introduce{read-modify-write} (\textsc{rmw}) operations.
 In \cpp{}, they're represented as member functions of \texttt{std::atomic<T>}.
 In \clang, they're freestanding functions.
 
@@ -597,7 +597,7 @@ or else we could run into a race where:
 \subsection{Compare and swap}
 \label{cas}
 
-Finally, we have \introduce{compare-and-swap} \textsc{(cas)},
+Finally, we have \introduce{compare-and-swap} (\textsc{cas}),
 sometimes called \introduce{compare-and-exchange}.
 It allows us to conditionally exchange a value \emph{if} its previous value
 matches some expected one.
@@ -699,7 +699,7 @@ provide different ordering guarantees, or \introduce{memory models}.
 For example, x64 is relatively \introduce{strongly-ordered},
 and can usually be trusted to preserve some system-wide order of
 loads and stores.
-Other architectures like \textsc{arm} are more \introduce{weakly-ordered,}
+Other architectures like \textsc{arm} are more \introduce{weakly-ordered},
 so one should make few assumptions that loads and stores are in
 program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
@@ -780,11 +780,11 @@ previous reads and writes cannot be placed after our operation,
 and the second ensures that subsequent reads and writes cannot be placed
 before it.
 
-\section{Implementing atomic read-modify-write operations with LL/SC instructions}
+\section{Implementing atomic read-modify-write operations with \textsc{ll}/\textsc{sc} instructions}
 
 Like many other
 \textsc{risc}\footnote{\introduce{Reduced instruction set computer},
-in contrast to a \introduce{complex instruction set computer} \textsc{(cisc)}
+in contrast to a \introduce{complex instruction set computer} (\textsc{cisc})
 architecture like x64.}
 architectures, \textsc{arm} lacks dedicated instructions for
 \textsc{rmw} operations.
@@ -793,7 +793,7 @@ Normal loads and stores won't do,
 since the processor can context switch to some other thread
 between any two instructions.
 We need something special:
-\introduce{load-link} and \introduce{store-conditional} \textsc{(ll/sc)}.
+\introduce{load-link} and \introduce{store-conditional} (\textsc{ll}/\textsc{sc}).
 The two work in tandem:
 A load-link reads a value from a given address
 (just like any other load), but also instructs the processor to monitor
@@ -1367,8 +1367,8 @@ but hopefully you now know:
 To learn more, see the additional resources below,
 or examine lock-free data structures and algorithms,
 such as a \introduce{single-producer/single-consumer}
-\textsc{(sp/sc)} queue or \introduce{read-copy-update}
-\textsc{(rcu)}.\punckern\footnote{See the Linux Weekly News article,
+(\textsc{sp/sc}) queue or \introduce{read-copy-update}
+(\textsc{rcu}).\punckern\footnote{See the Linux Weekly News article,
 \href{https://lwn.net/Articles/262464/}{\textit{What is RCU, Fundamentally?}}
 for an introduction.}
 
