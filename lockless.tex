@@ -1317,7 +1317,7 @@ but it can also produce surprising results.
 Consider:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
-while (tmp = foo.load(memory_order_relaxed) {
+while (tmp = foo.load(memory_order_relaxed)) {
   doSomething(tmp);
 }
 \end{minted}
@@ -1327,7 +1327,7 @@ the compiler is free to unroll the loop as much as it pleases,
 perhaps into:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
-while (tmp = foo.load(memory_order_relaxed) {
+while (tmp = foo.load(memory_order_relaxed)) {
   doSomething(tmp);
   doSomething(tmp);
   doSomething(tmp);
