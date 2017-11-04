@@ -194,7 +194,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \newenvironment{colfigure}
   {\par\bigskip\noindent\minipage{\linewidth}}
-  {\endminipage\vspace*{\bigskipamount}} % Add skip, even at end of column.
+  {\endminipage\bigskip}
 
 % Spend a bit more time to get better word spacing.
 % See http://tex.stackexchange.com/a/52855/92465
@@ -224,7 +224,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \end{center}
 
 Seasoned programmers are familiar with concurrency
-building blocks like mutexes, semaphores, and condition variables.
+tools like mutexes, semaphores, and condition variables.
 But what makes them work?
 How do we write concurrent code when we can't use them,
 like when we're working below the operating system in an embedded environment,
@@ -384,19 +384,13 @@ Creating order in our programs requires a different approach on each
 \textsc{cpu} architecture.
 Until alarmingly recently, systems languages like C and \cpp{}
 offered no help here,
-so developers needed assembly to write lockless
-code.\punckern\footnote{Calling this
-sort of work ``lockless'' programming is a bit of a misnomer,
-or at least isn't telling the whole story.
-While you can use these techniques to write non-blocking thread synchronization,
-they're the exact same approaches used to build locks and other blocking
-concurrency primitives.}
-Thankfully, the 2011 \textsc{iso} standards of both languages introduced tools
-for inter-thread memory access.
+so developers needed assembly for safe inter-thread communication.
+Fortunately, the 2011 \textsc{iso} standards of both languages introduced
+tools for the task.
 So long as the programmer uses them correctly,
 the compiler will prevent reorderings---both by the optimizer,
 and by hardware---that cause data races.\punckern\footnote{The
-ISO~\clang{11} standard lifted its lockless concurrency facilities,
+ISO~\clang{11} standard lifted its concurrency facilities,
 almost verbatim, from the \cpp{11} standard. Everything you see here
 should be identical in both languages, barring some arguably cleaner syntax in
 \cpp{}.}
@@ -457,10 +451,10 @@ atomic variable.
 \section{Atomicity}
 \label{atomicity}
 
-Our focus so far on ordering sidestepped the other vital element of lockless
-programming: \introduce{atomicity}.
+Our focus so far on ordering sidestepped the other vital ingredient for
+inter-thread communication: \introduce{atomicity}.
 Something is atomic if it cannot be divided into smaller parts.
-To see why lockless reads and writes must have this quality,
+To see why reads and writes must have this quality to share data between threads,
 let's see what problems we might encounter if they did not.
 
 Consider a program with two threads.
@@ -665,27 +659,49 @@ bool cancel()
 \end{minted}
 \end{colfigure}
 
-\section{Lock-free does not mean “faster”}
+\section{Atomic operations as building blocks}
 
-Somewhere in this discussion,
-it's important to point out that lockless algorithms are not somehow ``better''
+Atomic loads, stores, and \textsc{rmw} operations are the fundamental building
+blocks of all the concurrency tools we use.
+It's useful to separate them into two camps:
+
+\introduce{Blocking} synchronization is probably the more widely-known and
+understood of the two.
+In this approach,
+threads can be made to wait an arbitrary amount of time.
+For example, a programmer could use a mutex or spinlock to ensure that
+shared state can only be accessed by one thread at a time.
+If a thread takes the lock and is accessing that state,
+and another thread attempts to do the same,
+the second thread is made to wait---or \introduce{block}---until
+the first thread releases the lock.
+Other blocking concurrency tools include semaphores and condition variables,
+which can be used to make threads block until some shared resource is available.
+
+In contrast, \introduce{non-blocking}---or \introduce{lockless}---approaches
+allow threads to communicate without ever forcing one to wait.
+Consider a program streaming audio to a sound card, or
+an embedded system where a sensor invokes an interrupt service routine
+\textsc{(isr)} to notify the processor of new data.
+In either of these cases, waiting for an arbitrary amount of time would be
+unacceptable, so we need to communicate with other threads using lock-free
+algorithms and data structures.
+(In the former case, the user's audio would begin to stutter if the thread could not
+provide sound data to the card at the bitrate it is consumed.
+In the latter case, the next sensor input could be missed if the \textsc{isr}
+did not complete as quickly as possible.)
+
+It's important to point out that lockless algorithms are not somehow ``better''
 or ``faster'' than lock-based ones.
-They are just different tools.
-Well-written locks can be very efficient for sharing data between threads.
-On the other hand, if you find yourself in an interrupt service routine,
-or processing audio in real time,
-locks are not an option.
-Blocking in these cases would be disastrous,
-so a lock-free approach is your only hope.
-
+They are just different tools designed to serve different needs.
 Of course, there are situations where blocking
 and non-blocking approaches could both work.\punckern\footnote{You
 may also hear of \introduce{wait-free} algorithms---they are a subset of
 lock-free ones which are guaranteed to complete in some
 bounded number of steps.}
 If performance is a concern, \emph{profile!}
-How well a given synchronization method will
-perform depends on a number of factors, ranging from the number of threads at
+How well a given synchronization method performs depends on a number of factors,
+ranging from the number of threads at
 play to the specifics of your \textsc{cpu} hardware.
 And as always, consider the tradeoffs you make between
 complexity and performance.
@@ -705,7 +721,7 @@ program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
 
 It's helpful to look at how atomic operations work in a weakly-ordered system,
-both to gain a better understanding of what's happening in hardware,
+both to better understand what's happening in hardware,
 and to see why the \clang{} and \cpp{} models were designed as they
 were.\punckern\footnote{It's worth noting that the concepts we discuss here aren't
 oddities specific to \clang{} and \cpp{}.
@@ -713,6 +729,7 @@ Newer systems programming languages like D and Rust have converged on
 similar models.}
 Let's examine \textsc{arm}, since it's straightforward and widely-used.
 Consider the simplest atomic operations: loads and stores.
+Given some \mintinline{cpp}{atomic_int foo},
 % Shield your eyes.
 % Essentially,
 % 1. Place `atomic_int foo;` on its own line
@@ -721,8 +738,6 @@ Consider the simplest atomic operations: loads and stores.
 % 4. In the middle, place an arrow for each (futzing with height a bit)
 %    with the text "becomes" over it.
 \begin{colfigure}
-\mintinline{cpp}{atomic_int foo;}
-
 \begin{minipage}{0.35\linewidth}
 \begin{minted}[fontsize=\codesize]{cpp}
 int getFoo()
@@ -747,6 +762,7 @@ getFoo:
 \end{lstlisting}
 \end{minipage}
 %\end{colfigure}
+%Similarly,
 %\begin{colfigure}
 \begin{minipage}{0.35\linewidth}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -772,10 +788,11 @@ setFoo:
 \end{lstlisting}
 \end{minipage}
 \end{colfigure}
-After loading the address of our atomic variable into some scratch register
-(\texttt{r3}), the compiler sandwiches our load or store between memory barriers
-(\keyword{dmb}), then returns.
-These barriers give us sequential consistency---the first ensures that
+We load the address of our atomic variable into a scratch register
+(\texttt{r3}),
+sandwich our load or store between memory barriers (\keyword{dmb}),
+then return.
+The barriers give us sequential consistency---the first ensures that
 previous reads and writes cannot be placed after our operation,
 and the second ensures that subsequent reads and writes cannot be placed
 before it.
@@ -788,22 +805,20 @@ in contrast to a \introduce{complex instruction set computer} \textsc{(cisc)}
 architecture like x64.}
 architectures, \textsc{arm} lacks dedicated instructions for
 \textsc{rmw} operations.
-How do we make them atomic?
-Normal loads and stores won't do,
-since the processor can context switch to some other thread
-between any two instructions.
-We need something special:
+Since the processor can context switch to another thread
+between any two instructions,
+we can't create them with normal loads and stores.
+Instead, we need
 \introduce{load-link} and \introduce{store-conditional} \textsc{(ll/sc)}.
 The two work in tandem:
-A load-link reads a value from a given address
-(just like any other load), but also instructs the processor to monitor
-that address.
-Store-conditional instructions write the given
-value \emph{only if} no other stores were made to that address
+A load-link reads a value from an address---like any other load---but also
+instructs the processor to monitor that address.
+Store-conditional writes the given value \emph{only if}
+no other stores were made to that address
 since the corresponding load-link.
-As an example, let's look at an atomic fetch and add:
-\begin{colfigure}
+Let's see them in action with an atomic fetch and add.
 On \textsc{arm},
+\begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 void incFoo() { ++foo; }
 \end{minted}
