@@ -192,9 +192,14 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \newcommand{\secref}[1]{\hyperref[#1]{\textsc{\S}\ref*{#1}}}
 
+% Feel free to futz with the spacing above and below these.
+% (Given the number of code snippets and figures,
+% they can really make or break the spacing of the paragraphs.
+% Keep in mind that TeX only lays out a page at a time,
+% so you need to more or less look at how each page is individually handled.
 \newenvironment{colfigure}
-  {\par\bigskip\noindent\minipage{\linewidth}}
-  {\endminipage\bigskip}
+  {\par\vspace{1\baselineskip minus 0.5\baselineskip}\noindent\minipage{\linewidth}}
+  {\endminipage\vspace*{1\baselineskip minus 0.7\baselineskip}}
 
 % Spend a bit more time to get better word spacing.
 % See http://tex.stackexchange.com/a/52855/92465
