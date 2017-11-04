@@ -103,7 +103,6 @@
 % (We're using lowercase ones for the body text.)
 % See http://tex.stackexchange.com/a/133186
 \usepackage{enumitem}
-\setlist{leftmargin=*}
 \setlist[enumerate]{font=\addfontfeatures{Numbers=LowercaseOff, StylisticSet=02}}
 
 % Custom footer
@@ -1184,7 +1183,7 @@ Order doesn't matter when incrementing the reference
 count since no action is taken as a result.
 However, when we decrement, we must ensure that:
 \begin{enumerate}
-\item All reads and writes to the referenced object happen
+\item All reads and writes to the referenced object occur
 \emph{before} the count reaches zero.
 \item Deletion occurs \emph{after} the reference count drops to
     zero.\punckern\footnote{This can be optimized even further by
