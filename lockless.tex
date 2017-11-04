@@ -184,6 +184,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 % Also, use uppercase numbers to match the capital C.
 \newcommand{\cpp}[1]{C\kern-0.1ex\raisebox{0.15ex}{\texttt{++}}{\addfontfeature{Numbers=LowercaseOff}#1}}
 \newcommand{\clang}[1]{C{\addfontfeature{Numbers=LowercaseOff}#1}}
+\newcommand{\csharp}{C\raisebox{0.25ex}{\#}}
 
 \newcommand{\fig}[1]{Figure~\ref{#1}}
 
@@ -1327,7 +1328,64 @@ We can use them to implement everything we've discussed here without
 resorting to memory barriers.
 Hopefully, future \textsc{cpu} architectures will follow suit.
 
+\section{If concurrency is the question, \texttt{volatile} is not the answer.}
+
+Before we go, we should lay a common misconception to rest---one surrounding
+the \keyword{volatile} keyword.
+Perhaps because of how it was implemented in older compilers,
+or because of its different meaning in languages like
+Java and \csharp,\punckern\footnote{Unlike in \clang{} and \cpp{},
+\keyword{volatile} \emph{does} enforce ordering in those languages.}
+some believe that the keyword is useful for building concurrency primitives.
+Except for one specific case (see \secref{fusing}), this is not true.
+
+The purpose of \keyword{volatile} is to inform the compiler that a value can
+be changed by something besides the program we're executing.
+This is useful for memory-mapped~\textsc{I/O} \textsc{(mmio)},
+where the system hardware translates reads and writes to certain addresses
+into instructions for the devices connected to the \textsc{cpu}.
+(This is how most machines ultimately interact with the outside world.)
+This implies two guarantees:
+\begin{enumerate}
+\item The compiler will not elide what it would otherwise see as ``unnecessary''
+    loads and stores. For example, if I had some function:
+    \begin{colfigure}
+    \begin{minted}[fontsize=\codesize,autogobble]{cpp}
+    void write(int* t)
+    {
+      *t = 2;
+      *t = 42;
+    }
+    \end{minted}
+    \end{colfigure}
+    the compiler would normally optimize it to:
+    \begin{minted}[fontsize=\codesize,autogobble]{cpp}
+    void write(int* t) { *t = 42; }
+    \end{minted}
+    \mintinline{cpp}{*t = 2} is usually assumed to be a
+    \introduce{dead store} with no effect.
+    But, if \texttt{t} points to some \textsc{mmio} register, it's no longer
+    safe to make this assumption---each write could have some effect
+    on the hardware it's interacting with.
+
+\item The compiler will not reorder \keyword{volatile}
+    reads and writes with respect to other \keyword{volatile} ones
+    for similar reasons.
+\end{enumerate}
+
+These don't give us the atomicity or order we need for safe
+inter-thread communication.
+Notice that the second guarantee only prevents \keyword{volatile} operations
+from being reordered in relation \emph{to each other}---the compiler is still
+free to rearrange all other ``normal'' loads and stores around them.
+And even if we got past that problem, \keyword{volatile} does not emit memory
+barriers on weakly-ordered hardware.
+The keyword only works as a synchronization mechanism if both your compiler
+\emph{and} your hardware perform no reodrering.
+Don't bet on that.
+
 \section{Optimizations}
+\label{fusing}
 
 Finally, one should realize that while atomic operations do prevent certain
 optimizations, they aren't somehow immune to all of them.
@@ -1374,13 +1432,15 @@ but hopefully you now know:
 \begin{itemize}
 \item Why compilers and \textsc{cpu} hardware reorder loads and stores.
 \item Why we need special tools to prevent these reorderings
-    for communications between threads.
+    to communicate between threads.
 \item How we can guarantee \introduce{sequential consistency} in our programs.
 \item Atomic \introduce{read-modify-write} operations.
 \item How atomic operations can be implemented on weakly-ordered hardware,
     and what implications this can have for a language-level \textsc{api}.
 \item How we can \emph{carefully} optimize lockless code using alternative
     memory orderings.
+\item Why \keyword{volatile} is an inappropriate tool for inter-thread
+    communication.
 \item How the compiler might optimize atomic operations even further,
     and what we can do to prevent certain undesirable optimizations.
 \end{itemize}
