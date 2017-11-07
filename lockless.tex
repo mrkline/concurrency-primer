@@ -134,7 +134,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \usepackage{multicol}
 \setlength\columnsep{2em}
 %\setlength\parskip{0em}
-\setlength\parindent{2em}
+%\setlength\parindent{1.5em}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
@@ -407,16 +407,16 @@ For it to work as-desired, we need to use an
 \begin{minted}[fontsize=\codesize]{cpp}
 int v = 0;
 std::atomic_bool v_ready(false);
-\end{minted}
-\end{colfigure}
-\begin{colfigure}
-\begin{minted}[fontsize=\codesize]{cpp}
+
 void threadA()
 {
   v = 42;
   v_ready = true;
 }
-
+\end{minted}
+\end{colfigure}
+\begin{colfigure}
+\begin{minted}[fontsize=\codesize]{cpp}
 void threadB()
 {
   while (!v_ready) { /* spin */ }
@@ -563,9 +563,7 @@ std::atomic_flag af;
 
 void lock()
 {
-  while (af.test_and_set()) {
-    // Spin with backoff
-  }
+  while (af.test_and_set()) { /* spin */ }
 }
 
 void unlock() { af.clear(); }
@@ -674,7 +672,7 @@ It's useful to separate them into two camps:
 understood of the two.
 In this approach,
 threads can be made to wait an arbitrary amount of time.
-For example, a programmer could use a mutex or spinlock to ensure that
+For example, a programmer could use a mutex to ensure that
 shared state can only be accessed by one thread at a time.
 If a thread takes the lock and is accessing that state,
 and another thread attempts to do the same,
@@ -699,6 +697,20 @@ did not complete as quickly as possible.)
 It's important to point out that lockless algorithms are not somehow ``better''
 or ``faster'' than lock-based ones.
 They are just different tools designed to serve different needs.
+We should also note that algorithms aren't automatically lock-free if
+they only use atomic operations.
+Our primitive spinlock from \secref{spinlock} is still a blocking
+algorithm even though it doesn't use any \textsc{os}-provided syscalls to
+put the blocked thread to sleep.\punckern\footnote{Putting a blocked thread
+to sleep is often an optimization,
+since the operating system's scheduler can run other threads on the \textsc{cpu}
+until the sleeping one is unblocked.
+Some concurrency libraries even offer hybrid locks which spin briefly,
+then sleep.
+(This avoids the cost of context switching away from the current thread if it
+is blocked for less than the spin length, but avoids wasting \textsc{cpu}
+time in a long-running loop.)}
+
 Of course, there are situations where blocking
 and non-blocking approaches could both work.\punckern\footnote{You
 may also hear of \introduce{wait-free} algorithms---they are a subset of
@@ -718,10 +730,10 @@ with a proud tradition of code that is ever so subtly wrong.
 As mentioned in \secref{seqcst}, different hardware architectures
 provide different ordering guarantees, or \introduce{memory models}.
 For example, x64 is relatively \introduce{strongly-ordered},
-and can usually be trusted to preserve some system-wide order of
-loads and stores.
+and can be trusted to preserve some system-wide order of
+loads and stores in most cases.
 Other architectures like \textsc{arm} are more \introduce{weakly-ordered,}
-so one should make few assumptions that loads and stores are in
+so one shouldn't assume that loads and stores are executed in
 program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
 
@@ -766,9 +778,9 @@ getFoo:
   bx lr
 \end{lstlisting}
 \end{minipage}
-%\end{colfigure}
+\end{colfigure}
 %Similarly,
-%\begin{colfigure}
+\begin{colfigure}
 \begin{minipage}{0.35\linewidth}
 \begin{minted}[fontsize=\codesize]{cpp}
 void setFoo(int i)
@@ -973,9 +985,7 @@ becomes \texttt{compare\_exchange\_strong\_explicit()}, and so on.}
 void lock()
 {
   while (af.test_and_set(
-      memory_order_acquire)) {
-    // Spin with backoff
-  }
+      memory_order_acquire)) { /* spin */ }
 }
 
 void unlock()
@@ -1082,12 +1092,14 @@ void threadB()
 \end{minted}
 \end{colfigure}
 
+\columnbreak
 \subsection{Relaxed}
 
 Relaxed atomic operations are used when a variable will be shared between threads,
 but \emph{no specific order} is required.
 \begin{colfigure}
 \centering
+% Tweak width to fudge spacing
 \includegraphics[keepaspectratio,width=0.5\linewidth]{oppenheimer}
 \captionof{figure}{Relaxed atomic operations circa 1946}
 \label{oppenheimer}
@@ -1172,8 +1184,7 @@ void dec()
 {
   if (refCount.fetch_sub(1,
       memory_order_acq_rel) == 1) {
-    // No more references.
-    // Delete the data.
+    // No more references, delete the data.
   }
 }
 \end{minted}
@@ -1258,7 +1269,6 @@ this \emph{isn't} the case on some extremely weakly-ordered architectures like
 DEC Alpha.}
 So long as we convince the compiler not to make any similar speculations,
 we're in the clear.
-
 This is what \monobox{memory\_order\_consume} is for.
 Change readers to:
 \begin{colfigure}
@@ -1283,6 +1293,7 @@ was_null:
   ...
 \end{lstlisting}
 \end{colfigure}
+
 Sadly, the emphasis here is on \emph{could.}
 Figuring out what constitutes a ``dependency'' between expressions isn't
 as trivial as one might hope,\punckern\footnote{Even the experts in
