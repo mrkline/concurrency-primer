@@ -134,7 +134,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \usepackage{multicol}
 \setlength\columnsep{2em}
 %\setlength\parskip{0em}
-%\setlength\parindent{1.5em}
+\setlength\parindent{1.5em}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
@@ -672,24 +672,27 @@ It's useful to separate them into two camps:
 understood of the two.
 In this approach,
 threads can be made to wait an arbitrary amount of time.
-For example, a programmer could use a mutex to ensure that
-shared state can only be accessed by one thread at a time.
-If a thread takes the lock and is accessing that state,
-and another thread attempts to do the same,
+For example, a programmer could ensure that shared data is accessed by one
+thread at a time with a mutex.
+If some thread locks the mutex
+and another attempts to do the same,
 the second thread is made to wait---or \introduce{block}---until
-the first thread releases the lock.
+the first thread releases the lock,
+however long that may be.
 Other blocking concurrency tools include semaphores and condition variables,
-which can be used to make threads block until some shared resource is available.
+which can make threads wait until some shared resource is available.
 
-In contrast, \introduce{non-blocking}---or \introduce{lockless}---approaches
-allow threads to communicate without ever forcing one to wait.
+In contrast, \introduce{lockless} approaches
+ensure that at least one thread is always making progress.
+They are \introduce{non-blocking} since no thread can cause another to wait
+indefinitely.
 Consider a program streaming audio to a sound card, or
 an embedded system where a sensor invokes an interrupt service routine
-\textsc{(isr)} to notify the processor of new data.
-In either of these cases, waiting for an arbitrary amount of time would be
-unacceptable, so we need to communicate with other threads using lock-free
-algorithms and data structures.
-(In the former case, the user's audio would begin to stutter if the thread could not
+\textsc{(isr)} when new data arrives.
+In either of these cases, blocking for some arbitrary amount of time would be
+unacceptable, so we need lock-free algorithms and data structures to communicate
+with other threads.
+(In the former case, the user's audio would begin to stutter if we do not
 provide sound data to the card at the bitrate it is consumed.
 In the latter case, the next sensor input could be missed if the \textsc{isr}
 did not complete as quickly as possible.)
@@ -1342,12 +1345,12 @@ Hopefully, future \textsc{cpu} architectures will follow suit.
 
 Before we go, we should lay a common misconception to rest---one surrounding
 the \keyword{volatile} keyword.
-Perhaps because of how it was implemented in older compilers,
+Perhaps because of how it worked in older compilers and hardware,
 or because of its different meaning in languages like
 Java and \csharp,\punckern\footnote{Unlike in \clang{} and \cpp{},
 \keyword{volatile} \emph{does} enforce ordering in those languages.}
 some believe that the keyword is useful for building concurrency primitives.
-Except for one specific case (see \secref{fusing}), this is not true.
+Except for one specific case (see \secref{fusing}), this is false.
 
 The purpose of \keyword{volatile} is to inform the compiler that a value can
 be changed by something besides the program we're executing.
