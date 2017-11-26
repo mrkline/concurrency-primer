@@ -138,7 +138,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \title{What every systems programmer should know about lockless concurrency}
 \author{Matt Kline}
-\date{November 4, 2017}
+\date{November 21, 2017}
 
 % Custom footer
 % Hyperlinks
@@ -248,23 +248,23 @@ topic, but let's try to cover some fundamentals.
 \section{Background}
 \label{background}
 
-Modern computers run multiple sequences of instructions concurrently.
+Modern computers run several instruction sequences concurrently.
 We call them different names depending on the context---processes, threads, tasks,
 interrupt service routines, and so on---but many of the same principles apply
 across the board.
 On single-core machines, these sequences take turns,
-sharing the \textsc{cpu}.
+sharing the \textsc{cpu} in short slices of time.
 On multiprocessors, several can run in parallel, each on its own core.
 
 While computer scientists have invented many useful abstractions,
 these instruction streams (let's call them \emph{threads} from here on out for
 the sake of brevity) ultimately interact with one another by sharing bits of state.
 For this to work, we must be able to reason about
-the order of reads and writes that communicating threads make to memory.
-Consider a simple example where some thread \textit{A} shares
-an integer with other threads.
+the order of the reads and writes communicating threads make to memory.
+Consider a simple example where thread \textit{A} shares
+an integer with others.
 It writes the value to some variable,
-then sets a flag to instruct others to read whatever it just stored.
+then sets a flag to instruct other threads to read whatever it just stored.
 As code, this might resemble:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -353,7 +353,7 @@ accessing a single shared set of memory.}
 \label{ideal-machine}
 \end{colfigure}
 This is almost never the case.
-While processor speeds have increased exponentially in the past decades,
+While processor speeds have increased exponentially over the past decades,
 \textsc{ram} hasn't been able to keep up,
 creating an ever-widening gulf between the time it takes to run an
 instruction and the time needed to retrieve data from main memory.
@@ -447,7 +447,7 @@ This model, defined by Leslie Lamport in 1979,
 is called \introduce{sequential consistency}.
 Informally, the important takeaway is that sequentially consistent reads
 and writes act as rendezvous points for threads.
-By ensuring that other reads and writes cannot move ``past'' them,
+By ensuring that other operations cannot move ``past'' them,
 we know that anything thread \textit{A} did before writing to an atomic
 variable---such as assigning 42 to \texttt{v} before writing to
 \monobox{v\_ready}---can be observed by another thread that reads the
@@ -484,7 +484,7 @@ the architecture's word size.
 \section{Arbitrarily-sized “atomic” types}
 
 Along with \texttt{atomic\_int} and friends,
-\cpp{} provides the template \texttt{std::atomic<T>} for declaring
+\cpp{} provides the template \texttt{std::atomic<T>} for defining
 arbitrary atomic types. C, lacking a similar
 language feature but wanting to provide the same functionality,
 added an \keyword{\_Atomic} keyword.
@@ -493,7 +493,7 @@ Running counter to what we just discussed,
 even if it is larger than the target architecture's word size.
 In these cases, the compiler and the language runtime library automatically
 surround reads and writes to the variable with locks.
-For situations where this is unacceptable,\punckern\footnote{\ldots which is quite often,
+For situations where this is unacceptable,\punckern\footnote{\ldots which are quite often,
 since we're often using atomic operations to avoid locks in the first place.}
 you can add an assertion:
 \begin{colfigure}
@@ -664,8 +664,8 @@ bool cancel()
 
 \section{Atomic operations as building blocks}
 
-Atomic loads, stores, and \textsc{rmw} operations are the fundamental building
-blocks of all the concurrency tools we use.
+Atomic loads, stores, and \textsc{rmw} operations are the building
+blocks for all the concurrency tools we use.
 It's useful to separate them into two camps:
 
 \introduce{Blocking} synchronization is probably the more widely-known and
@@ -689,13 +689,13 @@ indefinitely.
 Consider a program streaming audio to a sound card, or
 an embedded system where a sensor invokes an interrupt service routine
 \textsc{(isr)} when new data arrives.
-In either of these cases, blocking for some arbitrary amount of time would be
-unacceptable, so we need lock-free algorithms and data structures to communicate
-with other threads.
+We need lock-free algorithms and data structures to communicate
+with other threads in both of these cases,
+since blocking for arbitrary amounts of time is unacceptable.
 (In the former case, the user's audio would begin to stutter if we do not
 provide sound data to the card at the bitrate it is consumed.
 In the latter case, the next sensor input could be missed if the \textsc{isr}
-did not complete as quickly as possible.)
+does not complete as quickly as possible.)
 
 It's important to point out that lockless algorithms are not somehow ``better''
 or ``faster'' than lock-based ones.
