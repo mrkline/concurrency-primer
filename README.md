@@ -4,6 +4,14 @@ This repo contains the LaTeX source for a pretentiously-named,
 but hopefully concise,
 introduction to lockless concurrency.
 
+## Where do I get a copy?
+
+The latest version should always be available at
+<http://assets.bitbashing.io/papers/lockless.pdf>.
+You can also find a rendered PDF for each tag with its release notes on
+[Github](https://github.com/mrkline/lockless-concurrency/releases)
+and [Gitlab](https://gitlab.com/mrkline/lockless-concurrency/tags).
+
 ## How do I build it?
 
 1. Install a modern, Unicode-aware LaTeX, such as LuaLaTeX.
