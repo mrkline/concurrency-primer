@@ -492,10 +492,10 @@ arbitrary atomic types. C, lacking a similar
 language feature but wanting to provide the same functionality,
 added an \keyword{\_Atomic} keyword.
 Running counter to what we just discussed,
-\emph{any} type can be ``atomic''\quotekern,
+\emph{any} type can be made ``atomic''\quotekern,
 even if it is larger than the target architecture's word size.
 In these cases, the compiler and the language runtime library automatically
-surround reads and writes to the variable with locks.
+surround the variable's reads and writes with locks.
 For situations where this is unacceptable,\punckern\footnote{\ldots which are quite often,
 since we're often using atomic operations to avoid locks in the first place.}
 you can add an assertion:
@@ -505,7 +505,7 @@ std::atomic<Foo> bar;
 ASSERT(bar.is_lock_free());
 \end{minted}
 \end{colfigure}
-Though there a few rare exceptions,\punckern\footnote{The language standards
+Except for there a few rare cases,\punckern\footnote{The language standards
 permit atomic types to be \emph{sometimes} lock-free.
 This might be necessary for architectures that
 don't guarantee atomicity for unaligned reads and writes.}
@@ -693,11 +693,11 @@ Consider a program streaming audio to a sound card, or
 an embedded system where a sensor invokes an interrupt service routine
 \textsc{(isr)} when new data arrives.
 We need lock-free algorithms and data structures to communicate
-with other threads in both of these cases,
-since blocking for arbitrary amounts of time is unacceptable.
-(In the former case, the user's audio would begin to stutter if we do not
+with other threads in these systems,
+since blocking for arbitrary amounts of time would break them.
+(In the first case, the user's audio would begin to stutter if we do not
 provide sound data to the card at the bitrate it is consumed.
-In the latter case, the next sensor input could be missed if the \textsc{isr}
+In the second, the next sensor input could be missed if the \textsc{isr}
 does not complete as quickly as possible.)
 
 It's important to point out that lockless algorithms are not somehow ``better''
@@ -826,11 +826,10 @@ Like many other
 \textsc{risc}\footnote{\introduce{Reduced instruction set computer},
 in contrast to a \introduce{complex instruction set computer} \textsc{(cisc)}
 architecture like x64.}
-architectures, \textsc{arm} lacks dedicated instructions for
-\textsc{rmw} operations.
+architectures, \textsc{arm} lacks dedicated \textsc{rmw} instructions.
 Since the processor can context switch to another thread
 between any two instructions,
-we can't create them with normal loads and stores.
+we can't implement \textsc{rmw} ops with normal loads and stores.
 Instead, we need
 \introduce{load-link} and \introduce{store-conditional} \textsc{(ll/sc)}.
 The two work in tandem:
@@ -1154,7 +1153,7 @@ void atomicMultiply(int by)
 {
   int expected = foo.load(memory_order_relaxed);
 
-  while (!foo.compare_exchange_?(
+  while (!foo.compare_exchange_weak(
     expected, expected * by,
     memory_order_release,
     memory_order_relaxed))
@@ -1214,7 +1213,7 @@ However, when we decrement, we must ensure that:
 
 Curious readers might be wondering about the difference between
 acquire-release and sequentially consistent operations.
-To quote Hans Boehm, the chair of the ISO~\cpp{} Concurrency Study Group,
+To quote Hans Boehm, chair of the ISO~\cpp{} Concurrency Study Group,
 \begin{quote}
 \small
 The difference between \texttt{acq\_rel} and \texttt{seq\_cst} is generally
@@ -1262,8 +1261,8 @@ if (p != nullptr) {
 \end{minted}
 \end{colfigure}
 
-Since we're trying to optimize readers as much as possible,
-it would be really nice if we could avoid a memory barrier
+Since we want to optimize readers as much as possible,
+it would be quite nice if we could avoid a memory barrier
 on weakly-ordered systems.
 As it turns out, we usually can.
 Since the data we examine (\texttt{p->keyboards})
@@ -1324,7 +1323,7 @@ Before reaching for them, ask yourself:
 \begin{itemize}[label={}, before=\itshape]
 \item Am I using a well-known and understood pattern \\
       (such as the ones shown above)?
-\item Are the operations occurring in a tight loop?
+\item Are the operations in a tight loop?
 \item Does every microsecond count here?
 \end{itemize}
 If the answer isn't yes for at least one of these,
@@ -1346,13 +1345,13 @@ Hopefully, future \textsc{cpu} architectures will follow suit.
 
 \section{If concurrency is the question, \texttt{volatile} is not the answer.}
 
-Before we go, we should lay a common misconception to rest---one surrounding
-the \keyword{volatile} keyword.
+Before we go, we should lay a common misconception surrounding
+the \keyword{volatile} keyword to rest.
 Perhaps because of how it worked in older compilers and hardware,
 or because of its different meaning in languages like
 Java and \csharp,\punckern\footnote{Unlike in \clang{} and \cpp{},
 \keyword{volatile} \emph{does} enforce ordering in those languages.}
-some believe that the keyword is useful for building concurrency primitives.
+some believe that the keyword is useful for building concurrency tools.
 Except for one specific case (see \secref{fusing}), this is false.
 
 The purpose of \keyword{volatile} is to inform the compiler that a value can
@@ -1380,7 +1379,7 @@ This implies two guarantees:
     \end{minted}
     \mintinline{cpp}{*t = 2} is usually assumed to be a
     \introduce{dead store} with no effect.
-    But, if \texttt{t} points to some \textsc{mmio} register, it's no longer
+    But, if \texttt{t} points to some \textsc{mmio} register, it's not
     safe to make this assumption---each write could have some effect
     on the hardware it's interacting with.
 
