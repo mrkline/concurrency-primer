@@ -1390,13 +1390,13 @@ This implies two guarantees:
     for similar reasons.
 \end{enumerate}
 
-These don't give us the atomicity or order we need for safe
+These rules don't give us the atomicity or order we need for safe
 inter-thread communication.
 Notice that the second guarantee only prevents \keyword{volatile} operations
 from being reordered in relation \emph{to each other}---the compiler is still
 free to rearrange all other ``normal'' loads and stores around them.
-And even if we got past that problem, \keyword{volatile} does not emit memory
-barriers on weakly-ordered hardware.
+And even if we set that problem aside,
+\keyword{volatile} does not emit memory barriers on weakly-ordered hardware.
 The keyword only works as a synchronization mechanism if both your compiler
 \emph{and} your hardware perform no reodrering.
 Don't bet on that.
