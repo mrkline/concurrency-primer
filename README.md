@@ -28,7 +28,7 @@ and [Gitlab](https://gitlab.com/mrkline/concurrency-primer/tags).
 
    The official version is typeset with Matthew Butterick's
    [Equity](https://typographyforlawyers.com/equity.html),
-   Christian Robertson's [Roboto](https://en.wikipedia.org/wiki/Roboto),
+   Christian Schwartz's [Neue Haas Grotesk](http://www.fontbureau.com/NHG),
    and [mononoki](https://madmalik.github.io/mononoki/) by "madmalik".
    In the likely case that you don't have all of these on your system,
    you'll need to change the [fontspec](https://ctan.org/pkg/fontspec)
