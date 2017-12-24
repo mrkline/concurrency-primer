@@ -1,16 +1,16 @@
-# What every systems programmer should know about lockless concurrency
+# What every systems programmer should know about concurrency
 
 This repo contains the LaTeX source for a pretentiously-named,
 but hopefully concise,
-introduction to lockless concurrency.
+introduction to low-level concurrency.
 
 ## Where do I get a copy?
 
 The latest version should always be available at
-<http://assets.bitbashing.io/papers/lockless.pdf>.
+<http://assets.bitbashing.io/papers/concurrency-primer.pdf>.
 You can also find a rendered PDF for each tag with its release notes on
-[Github](https://github.com/mrkline/lockless-concurrency/releases)
-and [Gitlab](https://gitlab.com/mrkline/lockless-concurrency/tags).
+[Github](https://github.com/mrkline/concurrency-primer/releases)
+and [Gitlab](https://gitlab.com/mrkline/concurrency-primer/tags).
 
 ## How do I build it?
 
@@ -39,16 +39,16 @@ and [Gitlab](https://gitlab.com/mrkline/lockless-concurrency/tags).
 
 4. Build the document using
 
-       latexmk -lualatex -latexoption=-halt-on-error -latexoption=-shell-escape lockless.tex
+       latexmk -lualatex -latexoption=-halt-on-error -latexoption=-shell-escape concurrency-primer.tex
 
    Note that `latexmk` will run LuaLaTeX multiple times, since
    TeX generates cross references in one pass, then links them in a second.
 
    If you can't use `latexmk` for some reason, you can manually invoke
 
-       lualatex -halt-on-error -shell-escape lockless.tex
+       lualatex -halt-on-error -shell-escape concurrency-primer.tex
 
    until it no longer warns,
    "Label(s) may have changed. Rerun to get cross-references right."
 
-5. Enjoy a beautifully typeset lockless.pdf.
+5. Enjoy a beautifully typeset concurrency-primer.pdf.
