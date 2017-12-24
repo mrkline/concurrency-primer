@@ -236,8 +236,8 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \large \bfseries\itshape Abstract
 \end{center}
 
-Seasoned programmers are familiar with concurrency
-tools like mutexes, semaphores, and condition variables.
+Seasoned programmers are familiar with tools like mutexes, semaphores,
+and condition variables.
 But what makes them work?
 How do we write concurrent code when we can't use them,
 like when we're working below the operating system in an embedded environment,
@@ -674,39 +674,39 @@ bool cancel()
 
 Atomic loads, stores, and \textsc{rmw} operations are the building
 blocks for all the concurrency tools we use.
-It's useful to separate them into two camps:
+It's useful to split those tools into two camps:
+\introduce{blocking} and \introduce{lockless}.
 
-\introduce{Blocking} synchronization is probably the more widely-known and
-understood of the two.
-In this approach,
-threads can be made to wait an arbitrary amount of time.
-For example, a programmer could ensure that shared data is accessed by one
-thread at a time with a mutex.
+Blocking synchronization methods are usually simpler to reason about,
+but they can make threads pause for arbitrary amounts of time.
+For example, consider a mutex,
+which ensures that threads take turns holding exclusive access to shared data.
 If some thread locks the mutex
 and another attempts to do the same,
-the second thread is made to wait---or \introduce{block}---until
+the second thread must wait---or \introduce{block}---until
 the first thread releases the lock,
 however long that may be.
-Other blocking concurrency tools include semaphores and condition variables,
-which can make threads wait until some shared resource is available.
+Blocking mechanisms are also susceptible to \introduce{deadlock} and
+\introduce{livelock}---situations where the entire system ``gets stuck''
+due to threads waiting for one another.
 
-In contrast, \introduce{lockless} approaches
-ensure that at least one thread is always making progress.
+In contrast, lockless approaches
+ensure that the system is always making forward progress.
 They are \introduce{non-blocking} since no thread can cause another to wait
 indefinitely.
-Consider a program streaming audio to a sound card, or
-an embedded system where a sensor invokes an interrupt service routine
+Consider an audio streaming program,
+or an embedded system where a sensor triggers an interrupt service routine
 \textsc{(isr)} when new data arrives.
 We need lock-free algorithms and data structures to communicate
-with other threads in these systems,
+between threads in these systems,
 since blocking for arbitrary amounts of time would break them.
-(In the first case, the user's audio would begin to stutter if we do not
-provide sound data to the card at the bitrate it is consumed.
-In the second, the next sensor input could be missed if the \textsc{isr}
+(In the first case, the user's audio would begin to stutter if sound data
+isn't provided at the bitrate it is consumed.
+In the second, subsequent sensor inputs could be missed if the \textsc{isr}
 does not complete as quickly as possible.)
 
-It's important to point out that lockless algorithms are not somehow ``better''
-or ``faster'' than lock-based ones.
+It's important to point out that lockless algorithms are not somehow better
+or faster than lock-based ones.
 They are just different tools designed to serve different needs.
 We should also note that algorithms aren't automatically lock-free if
 they only use atomic operations.
@@ -732,9 +732,7 @@ How well a given synchronization method performs depends on a number of factors,
 ranging from the number of threads at
 play to the specifics of your \textsc{cpu} hardware.
 And as always, consider the tradeoffs you make between
-complexity and performance.
-Lockless programming is a perilous activity
-with a proud tradition of code that is ever so subtly wrong.
+complexity and performance---lockless programming is a perilous art.
 
 \section{Sequential consistency on weakly-ordered hardware}
 
