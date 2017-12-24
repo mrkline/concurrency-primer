@@ -26,10 +26,14 @@
              SmallCapsFeatures={StylisticSet=10}, % Set everything in \textsc{} as small caps
              StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
             ]{Equity Text A}
-\setsansfont[Ligatures=TeX, Scale=MatchUppercase,
-             BoldFont={* Medium},
-             BoldItalicFont={* Medium Italic},
-            ]{Roboto}
+\setsansfont[Ligatures=TeX,
+             Scale=MatchUppercase,
+             Style=Alternate, % Straight-legged R
+             UprightFont = *-55Rg,
+             ItalicFont = *-56It,
+             BoldFont = *-65Md,
+             BoldItalicFont = *-66MdIt
+             ]{NHaasGroteskTXPro}
 \setmonofont[Scale=MatchLowercase]{mononoki}
 
 \newfontfamily{\headingface}{Equity Text B}[
@@ -218,10 +222,11 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \sffamily\Large \textbf{\runtitle}
 \bigskip
 
-\normalsize
+\large
 \runauthor
 \smallskip
 
+\normalsize
 \rundate
 \end{center}
 \bigskip
