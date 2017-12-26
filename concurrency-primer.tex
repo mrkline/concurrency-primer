@@ -138,6 +138,8 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 % install as shown at http://tex.stackexchange.com/a/1138/92465
 \usepackage{lstlangarm} % See above
 
+\usepackage{changepage} % For adjustwidth
+
 \usepackage{multicol}
 \setlength\columnsep{2em}
 %\setlength\parskip{0em}
@@ -157,17 +159,6 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
     linkcolor=violet, % Intra-doc links
     urlcolor=blue % URLs are blue
 }
-
-% See http://tex.stackexchange.com/a/68310
-\makeatletter
-\let\runauthor\@author
-\let\rundate\@date
-\let\runtitle\@title
-\makeatother
-
-% Spend a bit more time to get better word spacing.
-% See http://tex.stackexchange.com/a/52855
-\emergencystretch=1em
 
 % Use \punckern to overlap periods, commas, and footnote markers
 % for a tighter look.
@@ -208,6 +199,13 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
   {\par\vspace{1\baselineskip minus 0.5\baselineskip}\noindent\minipage{\linewidth}}
   {\endminipage\vspace*{1\baselineskip minus 0.7\baselineskip}}
 
+% See http://tex.stackexchange.com/a/68310
+\makeatletter
+\let\runauthor\@author
+\let\rundate\@date
+\let\runtitle\@title
+\makeatother
+
 % Spend a bit more time to get better word spacing.
 % See http://tex.stackexchange.com/a/52855/92465
 \emergencystretch=1em
@@ -231,7 +229,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \end{center}
 \bigskip
 
-\begin{center}\begin{minipage}{0.7\linewidth}
+\begin{adjustwidth}{1in}{1in}
 \begin{center}
 \large \bfseries\itshape Abstract
 \end{center}
@@ -249,7 +247,7 @@ topic, but let's try to cover some fundamentals.
 \bigskip
 
 \tableofcontents
-\end{minipage}\end{center}
+\end{adjustwidth}
 \medskip
 
 \begin{multicols*}{2}
@@ -1471,14 +1469,13 @@ for an introduction.}
 
 \vspace{\baselineskip}
 \noindent Good luck and godspeed!
-
 \end{multicols*}
+\newpage
 
 \appendix
 \setcounter{secnumdepth}{0}
 
-\begin{center}
-\begin{minipage}{0.7\linewidth}
+\begin{adjustwidth}{1in}{1in}
 \setlength\parskip{\baselineskip}
 \setlength\parindent{0pt}
 \section{Additional Resources}
@@ -1558,7 +1555,6 @@ you are free to copy, redistribute, translate, or otherwise transform this paper
 so long as you give appropriate credit, indicate if changes were made,
 and release your version or copy under this same license.
 
-\end{minipage}
-\end{center}
+\end{adjustwidth}
 
 \end{document}
