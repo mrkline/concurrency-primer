@@ -29,10 +29,13 @@ and [Gitlab](https://gitlab.com/mrkline/concurrency-primer/tags).
    The official version is typeset with Matthew Butterick's
    [Equity](https://typographyforlawyers.com/equity.html),
    Christian Schwartz's [Neue Haas Grotesk](http://www.fontbureau.com/NHG),
-   and [mononoki](https://madmalik.github.io/mononoki/) by "madmalik".
+   and [mononoki](https://madmalik.github.io/mononoki/) by Matthias Tellen.
    In the likely case that you don't have all of these on your system,
    you'll need to change the [fontspec](https://ctan.org/pkg/fontspec)
    declarations near the top of the `.tex` file.
+   (You might want to tweak or remove the
+   [colophon](https://en.wikipedia.org/wiki/Colophon_(publishing))
+   while you're at it.)
    You can also change the body font size by changing
    `\documentclass[fontsize=10pt, ...`
    to whatever you prefer.
