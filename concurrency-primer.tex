@@ -311,13 +311,13 @@ For starters, any compiler worth its salt will
 happily modify and reorder your code to take better advantage of the hardware
 it runs on.
 So long as the resulting instructions run to the same effect
-\emph{for the current thread,}
+\emph{for the current thread},
 reads and writes can be moved to avoid pipeline stalls\footnote{%
 Most \textsc{cpu} designs execute parts of several instructions in parallel
 to increase their clock speed (see \fig{pipeline}).
 When the result of an instruction is needed by
 another instruction in the pipeline, the \textsc{cpu} may need
-to suspend forward progress, or \introduce{stall,} until that result is ready.}
+to suspend forward progress, or \introduce{stall}, until that result is ready.}
 or to improve locality.\punckern\footnote{%
 \textsc{ram} is not read in single bytes, but in chunks called cache lines.
 If variables that are used together can be placed on the same cache line,
@@ -444,7 +444,7 @@ By using an atomic Boolean,
 \monobox{v = 42}\, is now guaranteed to happen before
 \monobox{v\_ready = true}\, in thread \textit{A},
 just as \monobox{my\_v = v}\, must occur after reading \monobox{v\_ready}\,
-in thread~\textit{B.}
+in thread~\textit{B}.
 
 Formally, these types provide a \textit{single total modification order}
 such that,
@@ -480,7 +480,7 @@ since two loads or stores are needed to read or write the entire value.
 If we're having a particularly unlucky time,
 the first thread could be halfway through writing the counter
 when the second thread reads it, receiving an incorrect value.
-These unfortunate occasions are called \introduce{torn reads and writes.}
+These unfortunate occasions are called \introduce{torn reads and writes}.
 
 If reads and writes to shared data are atomic, however,
 our problem disappears.
@@ -741,7 +741,7 @@ provide different ordering guarantees, or \introduce{memory models}.
 For example, x64 is relatively \introduce{strongly-ordered},
 and can be trusted to preserve some system-wide order of
 loads and stores in most cases.
-Other architectures like \textsc{arm} are more \introduce{weakly-ordered,}
+Other architectures like \textsc{arm} are more \introduce{weakly-ordered},
 so one shouldn't assume that loads and stores are executed in
 program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
@@ -1301,7 +1301,7 @@ was_null:
 \end{lstlisting}
 \end{colfigure}
 
-Sadly, the emphasis here is on \emph{could.}
+Sadly, the emphasis here is on \emph{could}.
 Figuring out what constitutes a ``dependency'' between expressions isn't
 as trivial as one might hope,\punckern\footnote{Even the experts in
 the \textsc{iso} committee's concurrency study group, \textsc{sg}1,
