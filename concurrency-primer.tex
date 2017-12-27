@@ -253,7 +253,7 @@ topic, but let's try to cover some fundamentals.
 \end{adjustwidth}
 \medskip
 
-\begin{multicols*}{2}
+\begin{multicols}{2}
 \section{Background}
 \label{background}
 
@@ -1346,6 +1346,57 @@ We can use them to implement everything we've discussed here without
 resorting to memory barriers.
 Hopefully, future \textsc{cpu} architectures will follow suit.
 
+\section{Cache effects and false sharing}
+
+As if all of this wasn't enough to keep rattling around in your head,
+modern hardware gives us one more wrinkle.
+Recall that memory is transferred between main \textsc{ram} and the \textsc{cpu}
+in cache lines.
+These lines are also the smallest unit transferred
+\emph{between} cores and their respective caches---if one core writes a value
+and another core reads it, the entire cache line containing that value must be
+transferred from the the first core's cache(s) to the second core's in order to
+keep their ``view'' of memory coherent.
+
+This can have a surprising performance impact.
+Consider a readers-writer lock,
+which avoids races by ensuring that shared data has one writer \emph{or}
+any number of readers, but never both at the same time.
+Somewhere, it must count the readers and writers:
+\begin{colfigure}
+\begin{minted}[fontsize=\codesize]{cpp}
+struct RWLock {
+  int readers;
+  bool hasWriter; // Zero or one writers
+};
+\end{minted}
+\end{colfigure}
+When a writer takes the lock, it must block until \texttt{readers} reaches zero.
+But whenever \texttt{hasWriter} is \mintinline{cpp}{false},
+the lock can be taken by readers with a simple \textsc{rmw} operation.
+
+Naïvely, it seems like this would offer a huge performance win over exclusive
+locks (e.g., mutexes, spinlocks, etc.) for cases when we read the shared data
+more often than we write,
+but this assumption fails to account for the effects of cache coherence.
+Since the reader and writer counts are on the same cache line,
+simultaneous access from multiple cores will cause that line to ``ping-pong''
+between those cores' caches.
+Unless critical sections are very large, it will likely take more time to
+resolve this contention than cores will spend in the critical sections
+themselves.\punckern\footnote{On some systems, a cache miss can cost more than
+two orders of magnitude than an atomic \textsc{rmw} operation.
+See Paul~E.\ McKenney's
+\href{https://www.youtube.com/watch?v=74QjNwYAJ7M}{talk from CppCon~2017}
+for more details.}
+
+This slowdown is even more insidious when it occurs between unrelated variables
+that happen to be placed on the same cache line.
+Whenever one designs concurrent data structures or algorithms,
+they should take this \introduce{false sharing} into account.
+One way to avoid it is to pad atomic variables with at least a cache line of
+unshared data, but this obviously carries a large space-time tradeoff.
+
 \section{If concurrency is the question, \texttt{volatile} is not the answer.}
 
 Before we go, we should lay a common misconception surrounding
@@ -1457,6 +1508,8 @@ but hopefully you now know:
     and what implications this can have for a language-level \textsc{api}.
 \item How we can \emph{carefully} optimize lockless code using alternative
     memory orderings.
+\item How \introduce{false sharing} can impact the performance of
+    concurrent memory access.
 \item Why \keyword{volatile} is an inappropriate tool for inter-thread
     communication.
 \item How to prevent the compiler from fusing atomic operations in undesirable
@@ -1472,11 +1525,14 @@ for an introduction.}
 
 \vspace{\baselineskip}
 \noindent Good luck and godspeed!
-\end{multicols*}
+\end{multicols}
 \newpage
 
 \appendix
 \setcounter{secnumdepth}{0}
+% We don't use footnotes in anything below, but KOMA Script and multicols
+% sometimes conspire to put a rule on the last page anyways.
+\setfootnoterule{0pt}
 
 \begin{adjustwidth}{1in}{1in}
 \setlength\parskip{\baselineskip}
