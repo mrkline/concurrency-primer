@@ -1402,7 +1402,7 @@ The keyword only works as a synchronization mechanism if both your compiler
 \emph{and} your hardware perform no reodrering.
 Don't bet on that.
 
-\section{Optimizations}
+\section{Atomic fusion}
 \label{fusing}
 
 Finally, one should realize that while atomic operations do prevent certain
@@ -1459,8 +1459,8 @@ but hopefully you now know:
     memory orderings.
 \item Why \keyword{volatile} is an inappropriate tool for inter-thread
     communication.
-\item How the compiler might optimize atomic operations even further,
-    and what we can do to prevent certain undesirable optimizations.
+\item How to prevent the compiler from fusing atomic operations in undesirable
+    ways.
 \end{itemize}
 To learn more, see the additional resources below,
 or examine lock-free data structures and algorithms,
