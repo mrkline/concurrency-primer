@@ -320,10 +320,14 @@ When the result of an instruction is needed by
 another instruction in the pipeline, the \textsc{cpu} may need
 to suspend forward progress, or \introduce{stall}, until that result is ready.}
 or to improve locality.\punckern\footnote{%
-\textsc{ram} is not read in single bytes, but in chunks called cache lines.
+\textsc{ram} is not read in single bytes, but in chunks called
+\introduce{cache lines}.
 If variables that are used together can be placed on the same cache line,
-several can be read or written at once.
-(We'll discuss caches and memory hierarchies shortly.)}
+they will be read and written all at once.
+This usually provides a massive speedup,
+but as we'll see in \secref{false-sharing},
+can bite us when a line must be shared between cores.
+}
 Variables can be assigned to the same memory location if they're never used
 in overlapping time frames.
 Instructions can be executed speculatively, before a branch is taken,
@@ -1347,22 +1351,23 @@ resorting to memory barriers.
 Hopefully, future \textsc{cpu} architectures will follow suit.
 
 \section{Cache effects and false sharing}
+\label{false-sharing}
 
 As if all of this wasn't enough to keep rattling around in your head,
 modern hardware gives us one more wrinkle.
 Recall that memory is transferred between main \textsc{ram} and the \textsc{cpu}
-in cache lines.
+in chunks called cache lines.
 These lines are also the smallest unit transferred
 \emph{between} cores and their respective caches---if one core writes a value
-and another core reads it, the entire cache line containing that value must be
-transferred from the the first core's cache(s) to the second core's in order to
+and another core reads it, the entire line containing that value must be
+transferred from the first core's cache(s) to the second core's in order to
 keep their ``view'' of memory coherent.
 
 This can have a surprising performance impact.
 Consider a readers-writer lock,
 which avoids races by ensuring that shared data has one writer \emph{or}
 any number of readers, but never both at the same time.
-Somewhere, it must count the readers and writers:
+At its core, it resembles the following:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 struct RWLock {
@@ -1371,11 +1376,12 @@ struct RWLock {
 };
 \end{minted}
 \end{colfigure}
-When a writer takes the lock, it must block until \texttt{readers} reaches zero.
-But whenever \texttt{hasWriter} is \mintinline{cpp}{false},
-the lock can be taken by readers with a simple \textsc{rmw} operation.
+Writers must block until \texttt{readers} reaches zero, but
+readers can take the lock
+with an atomic \textsc{rmw} operation
+whenever \texttt{hasWriter} is \mintinline{cpp}{false}.
 
-Naïvely, it seems like this would offer a huge performance win over exclusive
+Naïvely, it seems like this offers a huge performance win over exclusive
 locks (e.g., mutexes, spinlocks, etc.) for cases when we read the shared data
 more often than we write,
 but this assumption fails to account for the effects of cache coherence.
@@ -1394,7 +1400,7 @@ This slowdown is even more insidious when it occurs between unrelated variables
 that happen to be placed on the same cache line.
 Whenever one designs concurrent data structures or algorithms,
 they should take this \introduce{false sharing} into account.
-One way to avoid it is to pad atomic variables with at least a cache line of
+One way to avoid it is to pad atomic variables with at least one cache line of
 unshared data, but this obviously carries a large space-time tradeoff.
 
 \section{If concurrency is the question, \texttt{volatile} is not the answer.}
@@ -1402,7 +1408,7 @@ unshared data, but this obviously carries a large space-time tradeoff.
 Before we go, we should lay a common misconception surrounding
 the \keyword{volatile} keyword to rest.
 Perhaps because of how it worked in older compilers and hardware,
-or because of its different meaning in languages like
+or due to its different meaning in languages like
 Java and \csharp,\punckern\footnote{Unlike in \clang{} and \cpp{},
 \keyword{volatile} \emph{does} enforce ordering in those languages.}
 some believe that the keyword is useful for building concurrency tools.
