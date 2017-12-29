@@ -315,7 +315,7 @@ So long as the resulting instructions run to the same effect
 \emph{for the current thread},
 reads and writes can be moved to avoid pipeline stalls\footnote{%
 Most \textsc{cpu} designs execute parts of several instructions in parallel
-to increase their clock speed (see \fig{pipeline}).
+to increase their throughput (see \fig{pipeline}).
 When the result of an instruction is needed by
 another instruction in the pipeline, the \textsc{cpu} may need
 to suspend forward progress, or \introduce{stall}, until that result is ready.}
