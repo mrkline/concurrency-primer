@@ -1422,7 +1422,7 @@ into instructions for the devices connected to the \textsc{cpu}.
 (This is how most machines ultimately interact with the outside world.)
 This implies two guarantees:
 \begin{enumerate}
-\item The compiler will not elide what it would otherwise see as ``unnecessary''
+\item The compiler will not elide what it otherwise sees as ``unnecessary''
     loads and stores. For example, if I had some function:
     \begin{colfigure}
     \begin{minted}[fontsize=\codesize,autogobble]{cpp}
@@ -1438,7 +1438,7 @@ This implies two guarantees:
     void write(int* t) { *t = 42; }
     \end{minted}
     \mintinline{cpp}{*t = 2} is usually assumed to be a
-    \introduce{dead store} with no effect.
+    \introduce{dead store} that does nothing.
     But, if \texttt{t} points to some \textsc{mmio} register, it's not
     safe to make this assumption---each write could have some effect
     on the hardware it's interacting with.
