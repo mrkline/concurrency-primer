@@ -148,7 +148,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \title{What every systems programmer should know about concurrency}
 \author{Matt Kline}
-\date{December 24, 2017}
+\date{January 7, 2018}
 
 % Custom footer
 % Hyperlinks
@@ -1382,19 +1382,20 @@ with an atomic \textsc{rmw} operation
 whenever \texttt{hasWriter} is \mintinline{cpp}{false}.
 
 Naïvely, it seems like this offers a huge performance win over exclusive
-locks (e.g., mutexes, spinlocks, etc.) for cases when we read the shared data
+locks (e.g., mutexes, spinlocks, etc.) for cases where we read the shared data
 more often than we write,
-but this assumption fails to account for the effects of cache coherence.
-Since the reader and writer counts are on the same cache line,
-simultaneous access from multiple cores will cause that line to ``ping-pong''
-between those cores' caches.
-Unless critical sections are very large, it will likely take more time to
-resolve this contention than cores will spend in the critical sections
-themselves.\punckern\footnote{On some systems, a cache miss can cost more than
+but this assumption fails to consider the effects of cache coherence.
+If multiple readers---each running on a different core---simultaneously
+take the lock,
+the cache line containing it will ``ping-pong'' between those cores' caches.
+Unless critical sections are very large, resolving this contention will likely
+take more time than the critical sections
+themselves,\punckern\footnote{On some systems, a cache miss can cost more than
 two orders of magnitude than an atomic \textsc{rmw} operation.
 See Paul~E.\ McKenney's
 \href{https://www.youtube.com/watch?v=74QjNwYAJ7M}{talk from CppCon~2017}
 for more details.}
+even though no blocking is required by the algorithm.
 
 This slowdown is even more insidious when it occurs between unrelated variables
 that happen to be placed on the same cache line.
@@ -1618,7 +1619,7 @@ and release your version under this same license.
 
 \section{About the type}
 
-This guide was set using \LuaLaTeX{}
+This guide was typeset using \LuaLaTeX{}
 in Matthew Butterick's
 \href{https://typographyforlawyers.com/equity.html}{Equity},
 with code in Matthias Tellen's
