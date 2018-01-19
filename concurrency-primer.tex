@@ -27,6 +27,7 @@
              StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
             ]{Equity Text A}
 \setsansfont[Ligatures=TeX,
+             Scale=MatchUppercase,
              Style=Alternate, % Straight-legged R
              UprightFont = *-55Rg,
              ItalicFont = *-56It,
@@ -103,6 +104,7 @@
 \setkomafont{disposition}{\rmfamily}
 \setkomafont{section}{\headingface\large\itshape}
 \setkomafont{subsection}{\normalsize\itshape}
+\setkomafont{captionlabel}{\sffamily\footnotesize}
 \renewcommand*\thesection{\upshape\arabic{section}}
 
 % Use uppercase numbers for numbered lists.
@@ -119,7 +121,7 @@
 \usepackage{minted} % Syntax highlighting via Pygments
 
 \usepackage{graphicx}
-\usepackage[font=footnotesize,justification=raggedright]{caption}
+\usepackage[font={sf,footnotesize},justification=raggedright]{caption}
 
 \usepackage{tikz} % Duck and cover.
 
@@ -1624,8 +1626,8 @@ in Matthew Butterick's
 \href{https://typographyforlawyers.com/equity.html}{Equity},
 with code in Matthias Tellen's
 \href{https://madmalik.github.io/mononoki/}{\texttt{mononoki}}.
-The title is set in
-\href{http://www.fontbureau.com/NHG/}{\textsf{\small Neue Haas Grotesk}},
+The title and captions are set in
+\href{http://www.fontbureau.com/NHG/}{\textsf{Neue Haas Grotesk}},
 a Helvetica restoration by Christian Schwartz.
 \end{adjustwidth}
 
