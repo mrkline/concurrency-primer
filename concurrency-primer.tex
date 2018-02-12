@@ -5,7 +5,7 @@
 % We're using KOMA Script to hand-tune footnotes and TOC appearance.
 % It should be available in your texlive distribution,
 % which is how most distros package LaTeX.
-\documentclass[fontsize=10pt, numbers=endperiod]{scrartcl}
+\documentclass[fontsize=10bp, numbers=endperiod]{scrartcl}
 
 % Margins: see http://practicaltypography.com/page-margins.html and
 % http://practicaltypography.com/line-length.html
@@ -123,7 +123,7 @@
 
 \usepackage{tikz} % Duck and cover.
 
-\newcommand{\codesize}{\fontsize{10pt}{12pt}}
+\newcommand{\codesize}{\fontsize{10bp}{12bp}}
 
 % Syntax highlighting for ARM asm (minted doesn't do this well)
 \usepackage{listings}
@@ -211,9 +211,9 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 % See http://tex.stackexchange.com/a/52855/92465
 \emergencystretch=1em
 
-% Try harder not to screw up footnotes in multicols environments.
+% Consider more material for a given page, which helps a bit with footnotes.
 % See the multicol manual.
-%\setcounter{collectmore}{-2}
+\setcounter{collectmore}{2}
 
 \begin{document}
 % Custom title instead of \maketitle
@@ -1399,10 +1399,10 @@ even though no blocking is required by the algorithm.
 
 This slowdown is even more insidious when it occurs between unrelated variables
 that happen to be placed on the same cache line.
-Whenever one designs concurrent data structures or algorithms,
-they should take this \introduce{false sharing} into account.
-One way to avoid it is to pad atomic variables with at least one cache line of
-unshared data, but this obviously carries a large space-time tradeoff.
+When one designs concurrent data structures or algorithms,
+this \introduce{false sharing} must be taken into account.
+One way to avoid it is to pad atomic variables with a cache line of
+unshared data, but this is obviously a large space-time tradeoff.
 
 \section{If concurrency is the question, \texttt{volatile} is not the answer.}
 
