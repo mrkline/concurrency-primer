@@ -20,12 +20,36 @@
 % traditional Computer Modern.
 \usepackage[no-math]{fontspec}
 \usepackage[fleqn]{amsmath}
-\setmainfont[Ligatures=TeX,
-             Numbers=Lowercase,
-             SmallCapsFont={Equity Caps A},
-             SmallCapsFeatures={StylisticSet=10}, % Set everything in \textsc{} as small caps
-             StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
-            ]{Equity Text A}
+\setmainfont[
+    Ligatures=TeX,
+    Numbers=Lowercase,
+    SmallCapsFeatures={StylisticSet=10}, % Set everything in \textsc{} as small caps
+    StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
+    UprightFeatures={
+        SizeFeatures={
+            {Size={-12},Font=Equity Text A, SmallCapsFont=Equity Caps A},
+            {Size={12-},Font=Equity Text B, SmallCapsFont=Equity Caps B},
+        }
+    },
+    BoldFeatures={
+        SizeFeatures={
+            {Size={-12},Font=Equity Text A Bold, SmallCapsFont=Equity Caps A Bold},
+            {Size={12-},Font=Equity Text B Bold, SmallCapsFont=Equity Caps B Bold},
+        }
+    },
+    ItalicFeatures={
+        SizeFeatures={
+            {Size={-12},Font=Equity Text A Italic},
+            {Size={12-},Font=Equity Text B Italic},
+        }
+    },
+    BoldItalicFeatures={
+        SizeFeatures={
+            {Size={-12},Font=Equity Text A Bold Italic},
+            {Size={12-},Font=Equity Text B Bold Italic},
+        }
+    },
+]{Equity Text A}
 \setsansfont[Ligatures=TeX,
              Style=Alternate, % Straight-legged R
              UprightFont = *-55Rg,
@@ -34,14 +58,6 @@
              BoldItalicFont = *-66MdIt
              ]{NHaasGroteskTXPro}
 \setmonofont[Scale=MatchLowercase]{mononoki}
-
-\newfontfamily{\headingface}{Equity Text B}[
-             Ligatures=TeX,
-             Numbers=Lowercase,
-             SmallCapsFont={Equity Caps B},
-             SmallCapsFeatures={StylisticSet=10}, % Set everything in \textsc{} as small caps
-             StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
-            ]
 
 \usepackage[italic]{mathastext}
 
@@ -101,7 +117,7 @@
 % Don't use a sans font for description labels.
 \addtokomafont{descriptionlabel}{\rmfamily\mdseries}
 \setkomafont{disposition}{\rmfamily}
-\setkomafont{section}{\headingface\large\itshape}
+\setkomafont{section}{\large\itshape}
 \setkomafont{subsection}{\normalsize\itshape}
 \renewcommand*\thesection{\upshape\arabic{section}}
 
