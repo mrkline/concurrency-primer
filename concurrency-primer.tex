@@ -13,7 +13,11 @@
 % Margins: see http://practicaltypography.com/page-margins.html and
 % http://practicaltypography.com/line-length.html
 % We're aiming for 80-ish characters per line.
-\usepackage[letterpaper, left=0.75in,right=0.75in,top=1in,bottom=1in]{geometry}
+\usepackage[
+    letterpaper,
+    footnotesep=\bodybaselineskip,
+    left=0.75in,right=0.75in,top=1in,bottom=1in,
+]{geometry}
 
 % Font specification.
 % Use Equity for the body text,
@@ -217,7 +221,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 % so you need to more or less look at how each page is individually handled.
 \newenvironment{colfigure}
   {\par\vspace{1\baselineskip minus 0.5\baselineskip}\noindent\minipage{\linewidth}}
-  {\endminipage\vspace*{1\baselineskip minus 0.7\baselineskip}}
+  {\endminipage\vspace{1\baselineskip minus 0.7\baselineskip}}
 
 % See http://tex.stackexchange.com/a/68310
 \makeatletter
