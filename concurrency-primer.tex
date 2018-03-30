@@ -1,11 +1,14 @@
 % Build this document with LuaTeX, a modern Unicode-aware LaTeX engine
 % that uses system TTF and OTF font files.
 % This is needed for the fontspec, microtype, and nolig packages.
-%
+
+\newcommand{\bodyfontsize}{10bp}
+\newcommand{\bodybaselineskip}{12bp}
+
 % We're using KOMA Script to hand-tune footnotes and TOC appearance.
 % It should be available in your texlive distribution,
 % which is how most distros package LaTeX.
-\documentclass[fontsize=10bp, numbers=endperiod]{scrartcl}
+\documentclass[fontsize=\bodyfontsize, numbers=endperiod]{scrartcl}
 
 % Margins: see http://practicaltypography.com/page-margins.html and
 % http://practicaltypography.com/line-length.html
@@ -139,7 +142,7 @@
 
 \usepackage{tikz} % Duck and cover.
 
-\newcommand{\codesize}{\fontsize{10bp}{12bp}}
+\newcommand{\codesize}{\fontsize{\bodyfontsize}{\bodybaselineskip}}
 
 % Syntax highlighting for ARM asm (minted doesn't do this well)
 \usepackage{listings}
