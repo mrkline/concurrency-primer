@@ -118,7 +118,7 @@
 % Note: tocstyle is currently in alpha, so feel free to tweak this as needed.
 % At time of writing, it seems to be the simplest way to get the intended effect.
 \usepackage{tocstyle}
-\settocfeature{pagenumberhook}{\addfontfeature{Numbers=Tabular}}
+\settocfeature{entryhook}{\addfontfeature{Numbers={Tabular,LowercaseOff}}}
 \settocfeature{entryvskip}{2pt}
 
 % Don't use a sans font for description labels.
@@ -132,7 +132,7 @@
 % (We're using lowercase ones for the body text.)
 % See http://tex.stackexchange.com/a/133186
 \usepackage{enumitem}
-\setlist[enumerate]{font=\addfontfeatures{Numbers=LowercaseOff, StylisticSet=02}}
+\setlist[enumerate]{font=\addfontfeatures{Numbers=LowercaseOff}}
 
 % Custom footer
 \usepackage{scrlayer-scrpage}
