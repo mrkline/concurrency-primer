@@ -10,6 +10,9 @@
 % which is how most distros package LaTeX.
 \documentclass[fontsize=\bodyfontsize, numbers=endperiod]{scrartcl}
 
+% Hm: https://mailman.ntg.nl/pipermail/dev-luatex/2019-February/006186.html
+\automatichyphenmode=1
+
 % Margins: see http://practicaltypography.com/page-margins.html and
 % http://practicaltypography.com/line-length.html
 % We're aiming for 80-ish characters per line.
@@ -260,16 +263,17 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \smallskip
 
 \noindent
-Seasoned programmers are familiar with tools like mutexes, semaphores,
+Systems programmers are familiar with tools like mutexes, semaphores,
 and condition variables.
-But what makes them work?
-How do we write concurrent code when we can't use them,
+But how do they work?
+How do we write concurrent code when they're not available,
 like when we're working below the operating system in an embedded environment,
 or when we can't block due to hard time constraints?
-And since your system transforms your code into things you didn't write,
-running in orders you never asked for, how do multithreaded programs work at all?
-Concurrency---especially on modern hardware---is a complicated and unintuitive
-topic, but let's try to cover some fundamentals.
+And since your compiler and hardware conspire to turn your code into things
+you didn't write, running in orders you never asked for,
+how do multithreaded programs work at all?
+Concurrency is a complicated and unintuitive topic,
+but let's try to cover some fundamentals.
 \bigskip
 
 \tableofcontents
@@ -280,22 +284,23 @@ topic, but let's try to cover some fundamentals.
 \section{Background}
 \label{background}
 
-Modern computers run several instruction sequences concurrently.
-We call them different names depending on the context---processes, threads, tasks,
-interrupt service routines, and so on---but many of the same principles apply
-across the board.
-On single-core machines, these sequences take turns,
+Modern computers run many instruction streams concurrently.
+On single-core machines, they take turns,
 sharing the \textsc{cpu} in short slices of time.
-On multiprocessors, several can run in parallel, each on its own core.
+On multi-core machines, several can run in parallel.
+We call them many names---processes, threads, tasks,
+interrupt service routines, and more---but most of the same principles apply
+across the board.
 
-While computer scientists have invented many useful abstractions,
-these instruction streams (let's call them \emph{threads} from here on out for
-the sake of brevity) ultimately interact with one another by sharing bits of state.
-For this to work, we must be able to reason about
-the order of the reads and writes communicating threads make to memory.
+While computer scientists have built lots of great abstractions,
+these instruction streams
+(let's call them all \emph{threads} for the sake of brevity)
+ultimately interact by sharing bits of state.
+For this to work, we need to understand the order that
+threads read and write to memory.
 Consider a simple example where thread \textit{A} shares
 an integer with others.
-It writes the value to some variable,
+It writes the integer to some variable,
 then sets a flag to instruct other threads to read whatever it just stored.
 As code, this might resemble:
 \begin{colfigure}
@@ -317,32 +322,32 @@ void threadA()
 void threadB()
 {
   // Await a value change and read it.
-  while (!v_ready) { /* spin */ }
+  while (!v_ready) { /* wait */ }
   const int my_v = v;
   // Do something with my_v...
 }
 \end{minted}
 \end{colfigure}
-Our system must guarantee that other threads observe \textit{A's} write to
+We need to make sure that other threads only observe \textit{A's} write to
 \texttt{v\_ready}
-only \emph{after A's} write to \texttt{v}.
-(If another thread can ``see'' \texttt{v\_ready} change before it sees \texttt{v}
-change, our communication scheme can't work.)
+\emph{after A's} write to \texttt{v}.
+(If another thread can ``see'' \texttt{v\_ready} become true before it sees
+\texttt{v} become 42, this simple scheme won't work.)
 
-This appears to be an incredibly simple guarantee to provide,
+You would think it's trivial to guarantee this order,
 but nothing is as it seems.
-For starters, any compiler worth its salt will
-happily modify and reorder your code to take better advantage of the hardware
-it runs on.
+For starters, any decent optimizing compiler will
+rewrite your code to run faster on the hardware
+it's targeting.
 So long as the resulting instructions run to the same effect
 \emph{for the current thread},
 reads and writes can be moved to avoid pipeline stalls\footnote{%
 Most \textsc{cpu} designs execute parts of several instructions in parallel
 to increase their throughput (see \fig{pipeline}).
-When the result of an instruction is needed by
-another instruction in the pipeline, the \textsc{cpu} may need
+When the result of one instruction is needed by
+a subsequent instruction in the pipeline, the \textsc{cpu} may need
 to suspend forward progress, or \introduce{stall}, until that result is ready.}
-or to improve locality.\punckern\footnote{%
+or improve locality.\punckern\footnote{%
 \textsc{ram} is not read in single bytes, but in chunks called
 \introduce{cache lines}.
 If variables that are used together can be placed on the same cache line,
@@ -352,18 +357,18 @@ but as we'll see in \secref{false-sharing},
 can bite us when a line must be shared between cores.
 }
 Variables can be assigned to the same memory location if they're never used
-in overlapping time frames.
-Instructions can be executed speculatively, before a branch is taken,
-then undone if the compiler guessed incorrectly.\punckern\footnote{This is
-especially common when using profile-guided optimization.}
+at the same time.
+Calculations can be made speculatively, before a branch is taken,
+then ignored if the compiler guessed incorrectly.\punckern\footnote{This is
+especially common when using profile-guided optimiation.}
 %(These sorts of optimizations  sometimes called the ``as-if'' rule in \cpp{}.)
 
-Even if we used a compiler that didn't reorder our code,
+Even if the compiler didn't change our code,
 we'd still be in trouble, since our hardware does it too!
-Modern \textsc{cpu} designs handle incoming instructions in
+A modern \textsc{cpu} processes instructions in
 a \emph{much} more complicated fashion than traditional pipelined approaches
 like the one shown in \fig{pipeline}.
-They contain multiple data paths, each for different types of instructions,
+They contain many data paths, each for different types of instructions,
 and schedulers which reorder and route instructions through these paths.
 \begin{colfigure}
 \centering
@@ -378,22 +383,22 @@ and schedulers which reorder and route instructions through these paths.
 \end{colfigure}
 
 It's also easy to make naïve assumptions about how memory works.
-If we imagine a multiprocessor,
+If we imagine a multi-core processor,
 we might think of something resembling \fig{ideal-machine},
 where each core takes turns performing reads and writes to the system's memory.
 \begin{colfigure}
 \centering
 \includegraphics[keepaspectratio, width=0.8\linewidth]{ideal-machine}
-\captionof{figure}{An idealized multiprocessor where cores take sequential turns
-accessing a single shared set of memory.}
+\captionof{figure}{An idealized multi-core processors where cores take
+sequential turns accessing a single shared set of memory.}
 \label{ideal-machine}
 \end{colfigure}
-This is almost never the case.
+But the world isn't so simple.
 While processor speeds have increased exponentially over the past decades,
 \textsc{ram} hasn't been able to keep up,
 creating an ever-widening gulf between the time it takes to run an
-instruction and the time needed to retrieve data from main memory.
-Hardware manufacturers have compensated by placing an increasing number of
+instruction and the time needed to retrieve its data from memory.
+Hardware designers have compensated by placing a growing number of
 hierarchical caches directly on the \textsc{cpu} die.
 Each core also usually has a \introduce{store buffer} that handles
 pending writes while subsequent instructions are executed.
@@ -405,39 +410,39 @@ is quite challenging.
 \begin{colfigure}
 \centering
 \includegraphics[keepaspectratio, width=\linewidth]{actual-machine}
-\captionof{figure}{A common memory hierarchy for modern multiprocessors}
+\captionof{figure}{A common memory hierarchy for modern multi-core processors}
 \label{dunnington}
 \end{colfigure}
 
-The net effect of these complications is that there is no consistent
+All of these complications mean that there is no consistent
 concept of ``now'' in a multithreaded program,
-especially one running on a multiprocessor.
-Attaining some sense of order so that threads can communicate
-is a team effort of hardware manufacturers, compiler writers,
-language designers, and application developers.
+especially on a multi-core \textsc{cpu}.
+Creating some sense of order between threads
+is a team effort of the hardware, the compiler,
+the programming language, and your application.
 Let's explore what we can do,
 and what tools we will need.
 
 \section{Enforcing law and order}
 \label{seqcst}
 
-Creating order in our programs requires a different approach on each
-\textsc{cpu} architecture.
-Until alarmingly recently, systems languages like C and \cpp{}
-offered no help here,
-so developers needed assembly for safe inter-thread communication.
-Fortunately, the 2011 \textsc{iso} standards of both languages introduced
-tools for the task.
-So long as the programmer uses them correctly,
-the compiler will prevent reorderings---both by the optimizer,
-and by hardware---that cause data races.\punckern\footnote{The
+Creating order in multithreaded programs requires different approaches on
+each \textsc{cpu} architecture.
+For many years, systems languages like C and \cpp{}
+had no notion of concurrency,
+forcing developers to use assembly or compiler extensions.
+This was finally fixed in 2011, when the \textsc{iso} standards for both
+languages added synchronization tools.
+So long as you use them correctly,
+the compiler will prevent any reorderings---both by its own optimizer,
+and by the \textsc{cpu}---that cause data races.\punckern\footnote{The
 ISO~\clang{11} standard lifted its concurrency facilities,
 almost verbatim, from the \cpp{11} standard. Everything you see here
 should be identical in both languages, barring some arguably cleaner syntax in
 \cpp{}.}
 
-Let's return to our example from before.
-For it to work as-desired, we need to use an
+Let's try our previous example again.
+For it to work, we need to use an
 \introduce{atomic type} for the ``ready'' flag:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -455,27 +460,27 @@ void threadA()
 \begin{minted}[fontsize=\codesize]{cpp}
 void threadB()
 {
-  while (!v_ready) { /* spin */ }
+  while (!v_ready) { /* wait */ }
   const int my_v = v;
   // Do something with my_v...
 }
 \end{minted}
 \end{colfigure}
 The C and \cpp{} standard libraries define a series of these types
-in \mintinline{c}{<stdatomic.h>} or \mintinline{cpp}{<atomic>}, respectively.
+in \mintinline{c}{<stdatomic.h>} and \mintinline{cpp}{<atomic>}, respectively.
 They look and act just like the integer types they mirror
 (e.g., \monobox{bool}~\textrightarrow~\monobox{atomic\_bool},
 \monobox{int}~\textrightarrow~\monobox{atomic\_int}, etc.),
-but the compiler ensures that other loads and stores aren't reordered around
-their reads and writes.
+but the compiler ensures that other variables' loads and stores aren't
+reordered around theirs.
 By using an atomic Boolean,
 \monobox{v = 42}\, is now guaranteed to happen before
 \monobox{v\_ready = true}\, in thread \textit{A},
-just as \monobox{my\_v = v}\, must occur after reading \monobox{v\_ready}\,
+just as \monobox{my\_v = v}\, must happen after reading \monobox{v\_ready}\,
 in thread~\textit{B}.
 
-Formally, these types provide a \textit{single total modification order}
-such that,
+Formally, atomic types establish a \textit{single total modification order}
+where,
 ``[\ldots] the result of any execution is the same as if the reads and writes
 occurred in some order, and the operations of each individual
 processor appear in this sequence in the order specified by its program.''
@@ -484,38 +489,36 @@ is called \introduce{sequential consistency}.
 Informally, the important takeaway is that sequentially consistent reads
 and writes act as rendezvous points for threads.
 By ensuring that other operations cannot move ``past'' them,
-we know that anything thread \textit{A} did before writing to an atomic
-variable---such as assigning 42 to \texttt{v} before writing to
-\monobox{v\_ready}---can be observed by another thread that reads the
-atomic variable.
+we know that anything thread \textit{A} did before writing to
+\monobox{v\_ready}---such as assigning 42 to \texttt{v}---is observable
+by any thread that reads \monobox{v\_ready}.
 
 \section{Atomicity}
 \label{atomicity}
 
-Our focus so far on ordering sidestepped the other vital ingredient for
-inter-thread communication: \introduce{atomicity}.
-Something is atomic if it cannot be divided into smaller parts.
-To see why reads and writes must have this quality to share data between threads,
-let's see what problems we might encounter if they did not.
+Our discussion so far has ignored the other vital ingredient for
+inter-thread communication: atomicity.
+Something is \introduce{atomic} if it cannot be divided into smaller parts.
+If threads don't use atomic reads and writes to share data, we run into trouble.
 
 Consider a program with two threads.
-One thread processes some list of files
-and increments a counter each time it finishes working on one of them.
-The other thread handles the user interface, and will periodically read
+One processes a list of files
+and increments a counter each time it finishes working on one.
+The other handles the user interface, and periodically reads
 the counter to update a progress bar.
-If that counter is a 64-bit integer, we have a problem on 32-bit machines,
-since two loads or stores are needed to read or write the entire value.
-If we're having a particularly unlucky time,
+If that counter is a 64-bit integer, we can't access it atomically on 32-bit
+machines, since we need two loads or stores to read or write the entire value.
+If we're particularly unlucky,
 the first thread could be halfway through writing the counter
 when the second thread reads it, receiving an incorrect value.
 These unfortunate occasions are called \introduce{torn reads and writes}.
 
-If reads and writes to shared data are atomic, however,
+If reads and writes to the counter are atomic, however,
 our problem disappears.
-We can also see that, compared to the difficulties of establishing order,
-ensuring atomicity is fairly straightforward:
-make sure that variables used for thread synchronization are no larger than
-the architecture's word size.
+We can see that, compared to the difficulties of establishing order,
+atomicity is fairly straightforward:
+just make sure that any variables used for thread synchronization
+are no larger than the \textsc{cpu} word size.
 
 \section{Arbitrarily-sized “atomic” types}
 
@@ -524,33 +527,31 @@ Along with \texttt{atomic\_int} and friends,
 arbitrary atomic types. C, lacking a similar
 language feature but wanting to provide the same functionality,
 added an \keyword{\_Atomic} keyword.
-Running counter to what we just discussed,
-\emph{any} type can be made ``atomic''\quotekern,
-even if it is larger than the target architecture's word size.
-In these cases, the compiler and the language runtime library automatically
+If \texttt{T} is larger than the machine's word size,
+the compiler and the language runtime library automatically
 surround the variable's reads and writes with locks.
-For situations where this is unacceptable,\punckern\footnote{\ldots which are quite often,
-since we're often using atomic operations to avoid locks in the first place.}
-you can add an assertion:
+If you want to make sure this isn't happening,\punckern\footnote{\ldots
+which is most of the time, since we're often using atomic operations to
+avoid locks in the first place.}
+you can check with:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 std::atomic<Foo> bar;
 ASSERT(bar.is_lock_free());
 \end{minted}
 \end{colfigure}
-Except for there a few rare cases,\punckern\footnote{The language standards
+In most cases,\punckern\footnote{The language standards
 permit atomic types to be \emph{sometimes} lock-free.
 This might be necessary for architectures that
 don't guarantee atomicity for unaligned reads and writes.}
-the result of this check is almost always known at compile time.
-Consequently, the \cpp{17} standard adds \texttt{is\_always\_lock\_free}:
+this information is known at compile time.
+Consequently, \cpp{17} added \texttt{is\_always\_lock\_free}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 static_assert(
   std::atomic<Foo>::is_always_lock_free);
 \end{minted}
 \end{colfigure}
-
 
 \section{Read-modify-write}
 \label{rmw}
@@ -570,11 +571,10 @@ the current value is read and replaced with a new one.
 To see where this might be useful,
 let's tweak our example from \secref{atomicity}.
 Instead of displaying the total number of processed files,
-we might want to show how many were processed each second.
-To do so, we'll have the \textsc{ui} thread zero the counter each time it
-is read.
-Even if these reads and writes are atomic,
-we could still run into the following race condition:
+the \textsc{ui} might want to show how many were processed each second,
+which we could implement by having the \textsc{ui} thread zero the counter
+whenever it reads it.
+If we do this as a separate step, we could get the following race condition:
 \begin{enumerate}
 \item The \textsc{ui} thread reads the counter.
 \item Before the \textsc{ui} thread has the chance to zero it,
@@ -582,8 +582,8 @@ we could still run into the following race condition:
 \item The \textsc{ui} thread now zeroes the counter, and the previous increment
     is lost.
 \end{enumerate}
-If the \textsc{ui} thread exchanges the current
-value of the counter with zero atomically, the race disappears.
+If the \textsc{ui} thread atomically exchanges the current value with zero,
+the race disappears.
 
 \subsection{Test and set}
 
@@ -591,7 +591,7 @@ value of the counter with zero atomically, the race disappears.
 we read it, set it to \mintinline{cpp}{true}, and provide the value it
 held beforehand.
 C and \cpp{} offer a type dedicated to this purpose, called \monobox{atomic\_flag}.
-We could use it to build a spinlock:
+We could use it to build a simple spinlock:
 \label{spinlock}
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -599,27 +599,28 @@ std::atomic_flag af;
 
 void lock()
 {
-  while (af.test_and_set()) { /* spin */ }
+  while (af.test_and_set()) { /* wait */ }
 }
 
 void unlock() { af.clear(); }
 \end{minted}
 \end{colfigure}
-If the previous value is \mintinline{cpp}{false},
-we are the first to acquire the lock,
-and the caller can proceed with exclusive access to whatever the lock protects.
+If we call \mintinline{cpp}{lock()} and the previous value is
+\mintinline{cpp}{false}, we are the first to acquire the lock,
+and can proceed with exclusive access to whatever the lock protects.
 If the previous value is \mintinline{cpp}{true},
 someone else has acquired the lock and we must
 wait until they release it by clearing the flag.
 
 \subsection{Fetch and…}
 
-We can also read a value, perform some basic mathematical operation on it
+We can also read a value,
+perform some simple operation on it
 (addition, subtraction, bitwise \textsc{and}, \textsc{or}, \textsc{xor}),
-and return its previous value.
+and return its previous value---all as one atomic operation.
 You might have noticed that in our exchange example,
 the worker thread's additions must also be atomic,
-or else we could run into a race where:
+or else we could get a race where:
 \begin{enumerate}
 \item The worker thread loads the current counter value and adds one.
 \item Before that thread can store the value back,
@@ -635,7 +636,7 @@ sometimes called \introduce{compare-and-exchange}.
 It allows us to conditionally exchange a value \emph{if} its previous value
 matches some expected one.
 In \clang{} and \cpp{}, \textsc{cas} resembles the following,
-if it were all executed atomically:
+if it were executed atomically:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 template <typename T>
@@ -661,14 +662,13 @@ Yes, but hold onto that thought---we'll talk about it in
 \secref{spurious-ll/sc-failures}.
 \end{samepage}
 
-Let's say we have some long-running piece of work that we might want to cancel
-from a \textsc{ui} thread.
+Let's say we have some long-running task that we might want to cancel.
 We'll give it three states: \textit{idle}, \textit{running},
 and \textit{cancelled}, and write a loop that exits when
 it is cancelled.
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
-enum class TaskState : int8_t {
+enum class TaskState {
   Idle, Running, Cancelled
 };
 
@@ -683,8 +683,7 @@ void taskLoop()
 }
 \end{minted}
 \end{colfigure}
-If we only want to set \texttt{ts} to \texttt{Cancelled} when it's
-currently \texttt{Running}, but do nothing if it's already \texttt{Idle},
+If we want to cancel the task if it's running, but do nothing if it's idle,
 we could \textsc{cas}:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -708,7 +707,7 @@ It's useful to split those tools into two camps:
 Blocking synchronization methods are usually simpler to reason about,
 but they can make threads pause for arbitrary amounts of time.
 For example, consider a mutex,
-which ensures that threads take turns holding exclusive access to shared data.
+which forces threads to take turns accessing shared data.
 If some thread locks the mutex
 and another attempts to do the same,
 the second thread must wait---or \introduce{block}---until
@@ -716,30 +715,29 @@ the first thread releases the lock,
 however long that may be.
 Blocking mechanisms are also susceptible to \introduce{deadlock} and
 \introduce{livelock}---situations where the entire system ``gets stuck''
-due to threads waiting for one another.
+due to threads waiting for each other.
 
-In contrast, lockless approaches
-ensure that the system is always making forward progress.
-They are \introduce{non-blocking} since no thread can cause another to wait
-indefinitely.
+In contrast, lockless synchronization methods
+ensure that the program is always making forward progress.
+These are \introduce{non-blocking}
+since no thread can cause another to wait indefinitely.
 Consider an audio streaming program,
 or an embedded system where a sensor triggers an interrupt service routine
 \textsc{(isr)} when new data arrives.
-We need lock-free algorithms and data structures to communicate
-between threads in these systems,
-since blocking for arbitrary amounts of time would break them.
-(In the first case, the user's audio would begin to stutter if sound data
+We need lock-free algorithms and data structures in these situations,
+since blocking could break them.
+(In the first case, the user's audio will begin to stutter if sound data
 isn't provided at the bitrate it is consumed.
 In the second, subsequent sensor inputs could be missed if the \textsc{isr}
 does not complete as quickly as possible.)
 
 It's important to point out that lockless algorithms are not somehow better
-or faster than lock-based ones.
-They are just different tools designed to serve different needs.
-We should also note that algorithms aren't automatically lock-free if
+or faster than blocking ones---they are just different tools
+designed for different jobs.
+We should also note that algorithms aren't automatically lock-free just because
 they only use atomic operations.
-Our primitive spinlock from \secref{spinlock} is still a blocking
-algorithm even though it doesn't use any \textsc{os}-provided syscalls to
+Our primitive spinlock from \secref{spinlock} is still blocking
+even though it doesn't use any \textsc{os}-provided syscalls to
 put the blocked thread to sleep.\punckern\footnote{Putting a blocked thread
 to sleep is often an optimization,
 since the operating system's scheduler can run other threads on the \textsc{cpu}
@@ -750,38 +748,38 @@ then sleep.
 is blocked for less than the spin length, but avoids wasting \textsc{cpu}
 time in a long-running loop.)}
 
-Of course, there are situations where blocking
-and non-blocking approaches could both work.\punckern\footnote{You
+Of course, there are situations where either blocking
+or lockless approaches would work.\punckern\footnote{You
 may also hear of \introduce{wait-free} algorithms---they are a subset of
 lock-free ones which are guaranteed to complete in some
 bounded number of steps.}
-If performance is a concern, \emph{profile!}
-How well a given synchronization method performs depends on a number of factors,
+Whenever performance is a concern, \emph{profile!}
+Performance depends on many factors,
 ranging from the number of threads at
-play to the specifics of your \textsc{cpu} hardware.
+play to the specifics of your \textsc{cpu}.
 And as always, consider the tradeoffs you make between
 complexity and performance---lockless programming is a perilous art.
 
 \section{Sequential consistency on weakly-ordered hardware}
 
-As mentioned in \secref{seqcst}, different hardware architectures
-provide different ordering guarantees, or \introduce{memory models}.
+Different hardware architectures provide different ordering guarantees.
+or \introduce{memory models}.
 For example, x64 is relatively \introduce{strongly-ordered},
 and can be trusted to preserve some system-wide order of
 loads and stores in most cases.
-Other architectures like \textsc{arm} are more \introduce{weakly-ordered},
-so one shouldn't assume that loads and stores are executed in
+Other architectures like \textsc{arm} are \introduce{weakly-ordered},
+so you can't assume that loads and stores are executed in
 program order unless the \textsc{cpu} is given special instructions---called
 \introduce{memory barriers}---to not shuffle them around.
 
-It's helpful to look at how atomic operations work in a weakly-ordered system,
-both to better understand what's happening in hardware,
-and to see why the \clang{} and \cpp{} models were designed as they
+It's helpful to see how atomic operations work in a weakly-ordered system,
+both to understand what's happening in hardware,
+and to see why the \clang{} and \cpp{} concurrency models were designed as they
 were.\punckern\footnote{It's worth noting that the concepts we discuss here aren't
-oddities specific to \clang{} and \cpp{}.
-Newer systems programming languages like D and Rust have converged on
+specific to \clang{} and \cpp{}.
+Other systems programming languages like D and Rust have converged on
 similar models.}
-Let's examine \textsc{arm}, since it's straightforward and widely-used.
+Let's examine \textsc{arm}, since it's both popular and straightforward.
 Consider the simplest atomic operations: loads and stores.
 Given some \mintinline{cpp}{atomic_int foo},
 % Shield your eyes.
@@ -815,6 +813,7 @@ getFoo:
 \end{lstlisting}
 \end{minipage}
 \end{colfigure}
+
 %Similarly,
 \begin{colfigure}
 \begin{minipage}{0.35\linewidth}
@@ -846,8 +845,8 @@ We load the address of our atomic variable into a scratch register
 sandwich our load or store between memory barriers (\keyword{dmb}),
 then return.
 The barriers give us sequential consistency---the first ensures that
-previous reads and writes cannot be placed after our operation,
-and the second ensures that subsequent reads and writes cannot be placed
+prior reads and writes can't be placed after our operation,
+and the second ensures that subsequent reads and writes can't be placed
 before it.
 
 \section{Implementing atomic read-modify-write operations with LL/SC instructions}
@@ -857,10 +856,10 @@ Like many other
 in contrast to a \introduce{complex instruction set computer} \textsc{(cisc)}
 architecture like x64.}
 architectures, \textsc{arm} lacks dedicated \textsc{rmw} instructions.
-Since the processor can context switch to another thread
-between any two instructions,
-we can't implement \textsc{rmw} ops with normal loads and stores.
-Instead, we need
+And since the processor can context switch to another thread
+at any time,
+we can't build \textsc{rmw} ops from normal loads and stores.
+Instead, we need special instructions:
 \introduce{load-link} and \introduce{store-conditional} \textsc{(ll/sc)}.
 The two work in tandem:
 A load-link reads a value from an address---like any other load---but also
@@ -891,8 +890,8 @@ loop:
 \end{colfigure}
 We \textsc{ll} the current value, add one, and immediately try to store it back
 with a \textsc{sc}. If that fails, another thread may have
-written a new value to \texttt{foo} since our \textsc{ll},
-so we repeat the process.
+written to \texttt{foo} since our \textsc{ll},
+so we try again.
 In this way, at least one thread is always making forward progress in atomically
 modifying \texttt{foo}, even if several are attempting to do so at
 once.\punckern\footnote{\ldots though generally,
@@ -902,18 +901,19 @@ for any significant amount of time.}
 \subsection{Spurious LL/SC failures}
 \label{spurious-ll/sc-failures}
 
-As you might imagine, keeping track of load-linked addresses on a
-byte-addressable level can be infeasibly expensive in terms of \textsc{cpu} hardware.
-To reduce this cost, many processors monitor them at some coarser
-granularity, such as the cache line.
+As you might imagine, it would take too much \textsc{cpu} hardware to track
+load-linked addresses for every single byte on the machine.
+To reduce this cost, many processors monitor them at some coarser granularity,
+such as the cache line.
 This means that a \textsc{sc}
-can fail if it is preceded by a write to \emph{any} address in the monitored block,
+can fail if it's preceded by a write to \emph{any} address in the monitored block,
 not just the specific one that was load-linked.
 
 This is troublesome when we want to compare and swap,
 and is the raison d'être for \monobox{compare\_exchange\_weak}.
 Unlike the \monobox{\_strong} version, a weak \textsc{cas}
-is allowed to fail spuriously, just like the underlying \textsc{ll/sc} mechanism.
+is allowed to fail spuriously, just like the \textsc{ll/sc} mechanism
+that implements it.
 Consider some function that atomically multiplies a value:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -937,22 +937,23 @@ and an outer one which repeatedly loads and multiplies \texttt{foo} until no
 other thread has modified it.
 With \monobox{compare\_exchange\_weak},
 the compiler is free to generate a single loop instead,
-since we don't care about the difference between spurious failures and ``normal''
-ones caused by another thread modifying \texttt{foo}.
+since we don't care about the difference between retries from spurious
+\textsc{sc} failures and retries caused by another thread modifying \texttt{foo}.
 
 \section{Do we always need sequentially consistent operations?}
 \label{lock-example}
 
-All of our examples so far have used sequentially consistent reads and writes
-to prevent memory accesses from being rearranged in ways that break our code.
+All of our examples so far have been sequentially consistent to prevent
+reorderings that break our code.
 We've also seen how weakly-ordered architectures like \textsc{arm}
-use a pair of memory barriers to provide this guarantee.
-As you might expect, these barriers can have a non-trivial impact on performance.
+use memory barriers to create sequential consistency.
+But as you might expect,
+these barriers can have a noticeable impact on performance.
 After all,
 they inhibit optimizations that your compiler and hardware would otherwise make.
 
 What if we could avoid some of this slowdown?
-Consider some simple case like the spinlock from \secref{spinlock}.
+Consider a simple case like the spinlock from \secref{spinlock}.
 Between the \texttt{lock()} and \texttt{unlock()} calls,
 we have a \introduce{critical section}
 where we can safely modify shared state protected by the lock.
@@ -973,13 +974,12 @@ demolishEarth(vogons); // non-shared
 \end{minted}
 \end{colfigure}
 
-It's vital that reads and writes to the shared memory we're protecting
+It's vital that reads and writes to shared memory
 don't move outside the critical section.
-But the opposite isn't true---the compiler and hardware could move
-as much as they desire \emph{into} the critical section without causing
-any trouble.
-We have no problem with the following if it is somehow
-faster:
+But the opposite isn't true!
+The compiler and hardware could move as much as they want \emph{into}
+the critical section without causing any trouble.
+We have no problem with the following if it is somehow faster:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 lock(); // Lock; critical section begins
@@ -998,7 +998,7 @@ So, how do we tell the compiler as much?
 By default, all atomic operations---including loads, stores,
 and the various flavors of \textsc{rmw}---are sequentially consistent.
 But this is only one of several orderings that we can give them.
-We'll examine each of them in turn, but a full list,
+We'll examine each, but a full list,
 along with the enumerations that the \clang{} and \cpp{} \textsc{api} uses,
 is:
 \begin{itemize}
@@ -1009,7 +1009,7 @@ is:
 \item Acquire-Release (\monobox{memory\_order\_acq\_rel})
 \item Consume (\monobox{memory\_order\_consume})
 \end{itemize}
-To specify one of these orderings,
+To pick an ordering,
 you provide it as an optional argument that we've slyly
 failed to mention so far:\footnote{\clang, being \clang,
 defines separate functions for cases where you want to specify an ordering.
@@ -1020,7 +1020,7 @@ becomes \texttt{compare\_exchange\_strong\_explicit()}, and so on.}
 void lock()
 {
   while (af.test_and_set(
-      memory_order_acquire)) { /* spin */ }
+      memory_order_acquire)) { /* wait */ }
 }
 
 void unlock()
@@ -1057,10 +1057,11 @@ need sequentially consistent operations.
 
 We've just seen acquire and release in action with the
 lock example from \secref{lock-example}.
-You can think of these two as ``one-way'' barriers:
-the former allows other reads and writes to move past it in a $before \to after$
-direction, and the latter works the opposite way,
-letting others move $after \to before$.
+You can think of them as ``one-way'' barriers:
+an acquire allows other reads and writes to move past it,
+but only in a $before \to after$ direction.
+A release works the opposite way,
+letting things move $after \to before$.
 On \textsc{arm} and other weakly-ordered architectures, this allows us to drop
 one of the memory barriers in each operation, such that
 
@@ -1120,14 +1121,13 @@ void threadA()
 void threadB()
 {
   while (!v_ready.load(memory_order_acquire)) {
-    // spin
+    // wait
   }
   assert(v == 42); // Must be true
 }
 \end{minted}
 \end{colfigure}
 
-\columnbreak
 \subsection{Relaxed}
 
 Relaxed atomic operations are used when a variable will be shared between threads,
@@ -1139,13 +1139,11 @@ but \emph{no specific order} is required.
 \captionof{figure}{Relaxed atomic operations circa 1946}
 \label{oppenheimer}
 \end{colfigure}
-This might seem like a rare occurrence,
-but is surprisingly common.
+This might seem rare, but it's surprisingly common.
 Recall our examples from \secref{atomicity} and \secref{rmw} where some worker
-thread increments a counter which is read by a \textsc{ui} thread to show
-progress.
+thread increments a counter, which is read by a \textsc{ui} thread.
 That counter could be incremented with
-\texttt{atomic\_fetch\_add()} using \texttt{memory\_order\_relaxed}.
+\texttt{fetch\_add(1, memory\_order\_relaxed)}.
 All we need is atomicity---nothing is synchronized by the counter.
 
 Relaxed reads and writes are also useful for sharing flags between threads.
@@ -1171,9 +1169,8 @@ int main()
 \end{minted}
 \end{colfigure}
 We don't care if the contents of the loop are rearranged around the load.
-Nothing bad will happen so long as \texttt{stop} only indicates that the
-worker should exit and doesn't ``announce'' any new data to be
-read by the worker.
+Nothing bad will happen so long as \texttt{stop} is only used to tell the
+worker to exit, and not to ``announce'' any new data.
 
 Finally, relaxed loads are commonly used with \textsc{cas} loops.
 Return to our lock-free multiply:
@@ -1191,11 +1188,11 @@ void atomicMultiply(int by)
 }
 \end{minted}
 \end{colfigure}
-All of the loads can be relaxed, as we don't need to enforce any sort of ordering
+All of the loads can be relaxed---we don't need to enforce any order
 until we've successfully modified our value.
-The initial load of \texttt{expected} isn't even strictly necessary---it just
-saves us a loop iteration if no other thread modifies \texttt{foo} before the
-\textsc{cas}.
+The initial load of \texttt{expected} isn't even strictly necessary.
+It just saves us a loop iteration if no other thread modifies
+\texttt{foo} before the \textsc{cas}.
 
 \subsection{Acquire-Release}
 
@@ -1229,9 +1226,9 @@ Order doesn't matter when incrementing the reference
 count since no action is taken as a result.
 However, when we decrement, we must ensure that:
 \begin{enumerate}
-\item All reads and writes to the referenced object occur
+\item All access to the referenced object happens
 \emph{before} the count reaches zero.
-\item Deletion occurs \emph{after} the reference count drops to
+\item Deletion happens \emph{after} the reference count reaches
     zero.\punckern\footnote{This can be optimized even further by
     making the acquire barrier only occur conditionally, when the reference
     count is zero.
@@ -1254,7 +1251,7 @@ In other words, acquire-release provides order relative to the variable
 being load-acquired and store-released, whereas sequentially consistent
 operation provides some \emph{global} order across the entire program.
 If the distinction still seems hazy, you're not alone.
-Boehm continues with,
+Boehm goes on to say,
 \begin{quote}
 \small
 This has subtle and unintuitive effects.
@@ -1266,11 +1263,12 @@ experts-only construct we have in the language.
 
 Last but not least, we have \texttt{memory\_order\_consume}.
 Consider a scenario where data is rarely changed,
-but frequently read by multiple threads.
-Perhaps it is a pointer in the kernel to information about peripherals
-plugged into the machine.
-This data will change \emph{very} infrequently,
-so it makes sense to optimize reads as much as possible.
+but often read by many threads.
+Maybe we're writing a kernel
+and we're tracking the peripherals plugged into the machine.
+This will change \emph{very} infrequently---only when someone
+plugs or unplugs something---so it makes sense to optimize reads as much as
+possible.
 Given what we know so far, the best we can do is:
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -1291,8 +1289,8 @@ if (p != nullptr) {
 \end{minted}
 \end{colfigure}
 
-Since we want to optimize readers as much as possible,
-it would be quite nice if we could avoid a memory barrier
+To further optimize readers,
+it would be great if loads could avoid a memory barrier
 on weakly-ordered systems.
 As it turns out, we usually can.
 Since the data we examine (\texttt{p->keyboards})
@@ -1347,7 +1345,7 @@ so all compilers currently convert consume operations to acquires.
 \subsection{\textsc{Hc Svnt Dracones}}
 
 Non-sequentially consistent orderings have many subtleties,
-and a slight mistake can cause elusive Heisenbugs that only occur sometimes,
+and a slight mistake can cause elusive Heisenbugs that only happen sometimes,
 on some platforms.
 Before reaching for them, ask yourself:
 \begin{itemize}[label={}, before=\itshape]
@@ -1356,21 +1354,18 @@ Before reaching for them, ask yourself:
 \item Are the operations in a tight loop?
 \item Does every microsecond count here?
 \end{itemize}
-If the answer isn't yes for at least one of these,
-default to sequentially consistent operations.
+If the answer isn't yes to several of these,
+stick to to sequentially consistent operations.
 Otherwise, be sure to give your code extra review and testing.
 
 \section{Hardware convergence}
 
-Those familiar with the platform may have noticed that all \textsc{arm} assembly
-shown here is from the seventh version of the architecture.
-Excitingly, the current (eighth) generation offers a massive
-improvement for lockless code.
+Those familiar with \textsc{arm} may have noticed that all assembly
+shown here is for the seventh version of the architecture.
+Excitingly, the eighth generation offers massive improvements for lockless code.
 Since most programming languages have converged on the memory model we've been
 exploring, \textsc{arm}v8 processors offer dedicated load-acquire
-and store-release instructions, \keyword{lda} and \keyword{stl}.
-We can use them to implement everything we've discussed here without
-resorting to memory barriers.
+and store-release instructions: \keyword{lda} and \keyword{stl}.
 Hopefully, future \textsc{cpu} architectures will follow suit.
 
 \section{Cache effects and false sharing}
@@ -1407,10 +1402,10 @@ whenever \texttt{hasWriter} is \mintinline{cpp}{false}.
 Naïvely, it seems like this offers a huge performance win over exclusive
 locks (e.g., mutexes, spinlocks, etc.) for cases where we read the shared data
 more often than we write,
-but this assumption fails to consider the effects of cache coherence.
+but this fails to consider cache effects.
 If multiple readers---each running on a different core---simultaneously
 take the lock,
-the cache line containing it will ``ping-pong'' between those cores' caches.
+its cache line will ``ping-pong'' between those cores' caches.
 Unless critical sections are very large, resolving this contention will likely
 take more time than the critical sections
 themselves,\punckern\footnote{On some systems, a cache miss can cost more than
@@ -1418,11 +1413,11 @@ two orders of magnitude than an atomic \textsc{rmw} operation.
 See Paul~E.\ McKenney's
 \href{https://www.youtube.com/watch?v=74QjNwYAJ7M}{talk from CppCon~2017}
 for more details.}
-even though no blocking is required by the algorithm.
+even though the algorithm doesn't block.
 
 This slowdown is even more insidious when it occurs between unrelated variables
 that happen to be placed on the same cache line.
-When one designs concurrent data structures or algorithms,
+When designing concurrent data structures or algorithms,
 this \introduce{false sharing} must be taken into account.
 One way to avoid it is to pad atomic variables with a cache line of
 unshared data, but this is obviously a large space-time tradeoff.
@@ -1441,13 +1436,14 @@ Except for one specific case (see \secref{fusing}), this is false.
 The purpose of \keyword{volatile} is to inform the compiler that a value can
 be changed by something besides the program we're executing.
 This is useful for memory-mapped~\textsc{I/O} \textsc{(mmio)},
-where the system hardware translates reads and writes to certain addresses
+where hardware translates reads and writes to certain addresses
 into instructions for the devices connected to the \textsc{cpu}.
 (This is how most machines ultimately interact with the outside world.)
-This implies two guarantees:
+\keyword{volatile} implies two guarantees:
 \begin{enumerate}
-\item The compiler will not elide what it otherwise sees as ``unnecessary''
-    loads and stores. For example, if I had some function:
+\item The compiler will not elide loads and stores that seem
+    ``unnecessary''\quotekern.
+    For example, if I had some function:
     \begin{colfigure}
     \begin{minted}[fontsize=\codesize,autogobble]{cpp}
     void write(int* t)
@@ -1631,7 +1627,7 @@ feel free to contact the author
 in lieu of pull requests.
 
 \addfontfeature{Numbers=LowercaseOff}
-This paper is licensed under a
+This paper is published under a
 Creative Commons Attribution-ShareAlike 4.0 International License.
 The legalese can be found through
 \url{https://creativecommons.org/licenses/by-sa/4.0/},
