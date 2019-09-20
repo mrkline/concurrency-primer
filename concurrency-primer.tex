@@ -336,7 +336,7 @@ We need to make sure that other threads only observe \textit{A's} write to
 
 You would think it's trivial to guarantee this order,
 but nothing is as it seems.
-For starters, any decent optimizing compiler will
+For starters, any optimizing compiler will
 rewrite your code to run faster on the hardware
 it's targeting.
 So long as the resulting instructions run to the same effect
@@ -431,7 +431,7 @@ each \textsc{cpu} architecture.
 For many years, systems languages like C and \cpp{}
 had no notion of concurrency,
 forcing developers to use assembly or compiler extensions.
-This was finally fixed in 2011, when the \textsc{iso} standards for both
+This was finally fixed in 2011, the \textsc{iso} standards for both
 languages added synchronization tools.
 So long as you use them correctly,
 the compiler will prevent any reorderings---both by its own optimizer,
@@ -473,12 +473,14 @@ They look and act just like the integer types they mirror
 \monobox{int}~\textrightarrow~\monobox{atomic\_int}, etc.),
 but the compiler ensures that other variables' loads and stores aren't
 reordered around theirs.
-By using an atomic Boolean,
+
+Informally, we can think of atomic variables
+as rendezvous points for threads.
+By making \monobox{v\_ready} atomic,
 \monobox{v = 42}\, is now guaranteed to happen before
-\monobox{v\_ready = true}\, in thread \textit{A},
+\monobox{v\_ready = true}\, in thread~\textit{A},
 just as \monobox{my\_v = v}\, must happen after reading \monobox{v\_ready}\,
 in thread~\textit{B}.
-
 Formally, atomic types establish a \textit{single total modification order}
 where,
 ``[\ldots] the result of any execution is the same as if the reads and writes
@@ -486,18 +488,11 @@ occurred in some order, and the operations of each individual
 processor appear in this sequence in the order specified by its program.''
 This model, defined by Leslie Lamport in 1979,
 is called \introduce{sequential consistency}.
-Informally, the important takeaway is that sequentially consistent reads
-and writes act as rendezvous points for threads.
-By ensuring that other operations cannot move ``past'' them,
-we know that anything thread \textit{A} did before writing to
-\monobox{v\_ready}---such as assigning 42 to \texttt{v}---is observable
-by any thread that reads \monobox{v\_ready}.
 
 \section{Atomicity}
 \label{atomicity}
-
-Our discussion so far has ignored the other vital ingredient for
-inter-thread communication: atomicity.
+But order is only one of the vital ingredients for inter-thread communication.
+The other is what atomic types are named for: atomicity.
 Something is \introduce{atomic} if it cannot be divided into smaller parts.
 If threads don't use atomic reads and writes to share data, we run into trouble.
 
@@ -510,12 +505,12 @@ If that counter is a 64-bit integer, we can't access it atomically on 32-bit
 machines, since we need two loads or stores to read or write the entire value.
 If we're particularly unlucky,
 the first thread could be halfway through writing the counter
-when the second thread reads it, receiving an incorrect value.
+when the second thread reads it, receiving garbage.
 These unfortunate occasions are called \introduce{torn reads and writes}.
 
 If reads and writes to the counter are atomic, however,
 our problem disappears.
-We can see that, compared to the difficulties of establishing order,
+We can see that, compared to the difficulties of establishing the right order,
 atomicity is fairly straightforward:
 just make sure that any variables used for thread synchronization
 are no larger than the \textsc{cpu} word size.
@@ -528,7 +523,7 @@ arbitrary atomic types. C, lacking a similar
 language feature but wanting to provide the same functionality,
 added an \keyword{\_Atomic} keyword.
 If \texttt{T} is larger than the machine's word size,
-the compiler and the language runtime library automatically
+the compiler and the language runtime automatically
 surround the variable's reads and writes with locks.
 If you want to make sure this isn't happening,\punckern\footnote{\ldots
 which is most of the time, since we're often using atomic operations to
@@ -558,7 +553,7 @@ static_assert(
 
 Loads and stores are all well and good,
 but sometimes we need to read a value, modify it,
-and write it back in a single atomic step.
+and write it back as a single atomic step.
 There are a few common \introduce{read-modify-write} \textsc{(rmw)} operations.
 In \cpp{}, they're represented as member functions of \texttt{std::atomic<T>}.
 In \clang, they're freestanding functions.
@@ -569,12 +564,13 @@ In \clang, they're freestanding functions.
 The simplest atomic \textsc{rmw} operation is an \introduce{exchange}:
 the current value is read and replaced with a new one.
 To see where this might be useful,
-let's tweak our example from \secref{atomicity}.
-Instead of displaying the total number of processed files,
-the \textsc{ui} might want to show how many were processed each second,
-which we could implement by having the \textsc{ui} thread zero the counter
-whenever it reads it.
-If we do this as a separate step, we could get the following race condition:
+let's tweak our example from \secref{atomicity}:
+instead of displaying the total number of processed files,
+the \textsc{ui} might want to show how many were processed per second.
+We could implement this by having the \textsc{ui} thread read the counter then
+zero it once each second.
+But if the read and the zeroing are separate steps,
+we could get the following race condition:
 \begin{enumerate}
 \item The \textsc{ui} thread reads the counter.
 \item Before the \textsc{ui} thread has the chance to zero it,
@@ -618,7 +614,7 @@ We can also read a value,
 perform some simple operation on it
 (addition, subtraction, bitwise \textsc{and}, \textsc{or}, \textsc{xor}),
 and return its previous value---all as one atomic operation.
-You might have noticed that in our exchange example,
+You might have noticed in the exchange example that
 the worker thread's additions must also be atomic,
 or else we could get a race where:
 \begin{enumerate}
@@ -700,7 +696,7 @@ bool cancel()
 \section{Atomic operations as building blocks}
 
 Atomic loads, stores, and \textsc{rmw} operations are the building
-blocks for all the concurrency tools we use.
+blocks for every single concurrency tool.
 It's useful to split those tools into two camps:
 \introduce{blocking} and \introduce{lockless}.
 
@@ -714,7 +710,7 @@ the second thread must wait---or \introduce{block}---until
 the first thread releases the lock,
 however long that may be.
 Blocking mechanisms are also susceptible to \introduce{deadlock} and
-\introduce{livelock}---situations where the entire system ``gets stuck''
+\introduce{livelock}---bugs where the entire system ``gets stuck''
 due to threads waiting for each other.
 
 In contrast, lockless synchronization methods
@@ -758,7 +754,7 @@ Performance depends on many factors,
 ranging from the number of threads at
 play to the specifics of your \textsc{cpu}.
 And as always, consider the tradeoffs you make between
-complexity and performance---lockless programming is a perilous art.
+complexity and performance---concurrency is a perilous art.
 
 \section{Sequential consistency on weakly-ordered hardware}
 
@@ -812,10 +808,6 @@ getFoo:
   bx lr
 \end{lstlisting}
 \end{minipage}
-\end{colfigure}
-
-%Similarly,
-\begin{colfigure}
 \begin{minipage}{0.35\linewidth}
 \begin{minted}[fontsize=\codesize]{cpp}
 void setFoo(int i)
@@ -909,12 +901,11 @@ This means that a \textsc{sc}
 can fail if it's preceded by a write to \emph{any} address in the monitored block,
 not just the specific one that was load-linked.
 
-This is troublesome when we want to compare and swap,
+This is especially troublesome for compare and swap,
 and is the raison d'être for \monobox{compare\_exchange\_weak}.
-Unlike the \monobox{\_strong} version, a weak \textsc{cas}
-is allowed to fail spuriously, just like the \textsc{ll/sc} mechanism
-that implements it.
-Consider some function that atomically multiplies a value:
+To see why, consider a function that atomically multiplies a value,
+even though there's no atomic read-multiply-write instruction in any
+common architecture.
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 void atomicMultiply(int by)
@@ -930,15 +921,26 @@ void atomicMultiply(int by)
 }
 \end{minted}
 \end{colfigure}
-If we use \monobox{compare\_exchange\_strong} here,
+Many lockless algorithms use \textsc{cas} loops like this to atomically update
+a variable even if calculating its new value isn't atomic. They:
+\begin{enumerate}
+\item Read the variable.
+\item Perform some (non-atomic) operation on its value.
+\item \textsc{cas} the new value with the previous one.
+\item If the \textsc{cas} failed, someone beat us to the punch, so try again.
+\end{enumerate}
+If we use \monobox{compare\_exchange\_strong} for this family of algorithms,
 the compiler must emit nested loops:
 an inner one to protect us from spurious \textsc{sc} failures,
-and an outer one which repeatedly loads and multiplies \texttt{foo} until no
-other thread has modified it.
-With \monobox{compare\_exchange\_weak},
+and an outer one which repeatedly performs our operation until no other thread
+has interrupted us.
+But unlike the \monobox{\_strong} version, a weak \textsc{cas}
+is allowed to fail spuriously, just like the \textsc{ll/sc} mechanism
+that implements it.
+So, with \monobox{compare\_exchange\_weak},
 the compiler is free to generate a single loop instead,
 since we don't care about the difference between retries from spurious
-\textsc{sc} failures and retries caused by another thread modifying \texttt{foo}.
+\textsc{sc} failures and retries caused by another thread modifying our variable.
 
 \section{Do we always need sequentially consistent operations?}
 \label{lock-example}
@@ -1132,19 +1134,19 @@ void threadB()
 
 Relaxed atomic operations are used when a variable will be shared between threads,
 but \emph{no specific order} is required.
+While this might seem rare, it's surprisingly common.
 \begin{colfigure}
 \centering
 % Tweak width to fudge spacing
-\includegraphics[keepaspectratio,width=0.5\linewidth]{oppenheimer}
+\includegraphics[keepaspectratio,width=0.6\linewidth]{oppenheimer}
 \captionof{figure}{Relaxed atomic operations circa 1946}
 \label{oppenheimer}
 \end{colfigure}
-This might seem rare, but it's surprisingly common.
 Recall our examples from \secref{atomicity} and \secref{rmw} where some worker
-thread increments a counter, which is read by a \textsc{ui} thread.
+thread is incrementing a counter, which is then read by a \textsc{ui} thread.
 That counter could be incremented with
-\texttt{fetch\_add(1, memory\_order\_relaxed)}.
-All we need is atomicity---nothing is synchronized by the counter.
+\texttt{fetch\_add(1, memory\_order\_relaxed)},
+since all we need is atomicity---nothing is synchronized by the counter.
 
 Relaxed reads and writes are also useful for sharing flags between threads.
 Consider some thread that loops until told to exit:
@@ -1266,7 +1268,7 @@ Consider a scenario where data is rarely changed,
 but often read by many threads.
 Maybe we're writing a kernel
 and we're tracking the peripherals plugged into the machine.
-This will change \emph{very} infrequently---only when someone
+This information will change \emph{very} infrequently---only when someone
 plugs or unplugs something---so it makes sense to optimize reads as much as
 possible.
 Given what we know so far, the best we can do is:
@@ -1292,7 +1294,7 @@ if (p != nullptr) {
 To further optimize readers,
 it would be great if loads could avoid a memory barrier
 on weakly-ordered systems.
-As it turns out, we usually can.
+As it turns out, they usually can.
 Since the data we examine (\texttt{p->keyboards})
 is \emph{dependent} on the value of \texttt{p},
 most platforms---even weakly-ordered ones---cannot reorder the initial
@@ -1443,7 +1445,7 @@ into instructions for the devices connected to the \textsc{cpu}.
 \begin{enumerate}
 \item The compiler will not elide loads and stores that seem
     ``unnecessary''\quotekern.
-    For example, if I had some function:
+    For example, if I have some function:
     \begin{colfigure}
     \begin{minted}[fontsize=\codesize,autogobble]{cpp}
     void write(int* t)
@@ -1508,8 +1510,8 @@ while (tmp = foo.load(memory_order_relaxed)) {
 }
 \end{minted}
 \end{colfigure}
-In some cases, ``fusing'' reads or writes like this is unacceptable,
-so we must prevent it
+If ``fusing'' reads or writes like this is unacceptable,
+we must prevent it
 with \mintinline{cpp}{volatile} casts or incantations like
 \mintinline{cpp}{asm volatile("" ::: "memory")}.\punckern\footnote{See
 \url{https://stackoverflow.com/a/14983432}.}
