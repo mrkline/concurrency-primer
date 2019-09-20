@@ -431,8 +431,8 @@ each \textsc{cpu} architecture.
 For many years, systems languages like C and \cpp{}
 had no notion of concurrency,
 forcing developers to use assembly or compiler extensions.
-This was finally fixed in 2011, the \textsc{iso} standards for both
-languages added synchronization tools.
+This was finally fixed in 2011, when both languages' \textsc{iso} standards
+added synchronization tools.
 So long as you use them correctly,
 the compiler will prevent any reorderings---both by its own optimizer,
 and by the \textsc{cpu}---that cause data races.\punckern\footnote{The
@@ -442,8 +442,7 @@ should be identical in both languages, barring some arguably cleaner syntax in
 \cpp{}.}
 
 Let's try our previous example again.
-For it to work, we need to use an
-\introduce{atomic type} for the ``ready'' flag:
+For it to work, the ``ready'' flag needs to use an \introduce{atomic type}.
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
 int v = 0;
@@ -497,9 +496,9 @@ Something is \introduce{atomic} if it cannot be divided into smaller parts.
 If threads don't use atomic reads and writes to share data, we run into trouble.
 
 Consider a program with two threads.
-One processes a list of files
-and increments a counter each time it finishes working on one.
-The other handles the user interface, and periodically reads
+One processes a list of files,
+incrementing a counter each time it finishes working on one.
+The other handles the user interface, periodically reading
 the counter to update a progress bar.
 If that counter is a 64-bit integer, we can't access it atomically on 32-bit
 machines, since we need two loads or stores to read or write the entire value.
@@ -569,8 +568,8 @@ instead of displaying the total number of processed files,
 the \textsc{ui} might want to show how many were processed per second.
 We could implement this by having the \textsc{ui} thread read the counter then
 zero it once each second.
-But if the read and the zeroing are separate steps,
-we could get the following race condition:
+But we could get the following race condition
+if reading and zeroing are separate steps:
 \begin{enumerate}
 \item The \textsc{ui} thread reads the counter.
 \item Before the \textsc{ui} thread has the chance to zero it,
@@ -670,7 +669,7 @@ enum class TaskState {
 
 std::atomic<TaskState> ts;
 
-void taskLoop()
+void runTask()
 {
   ts = TaskState::Running;
   while (ts == TaskState::Running) {
@@ -705,7 +704,7 @@ but they can make threads pause for arbitrary amounts of time.
 For example, consider a mutex,
 which forces threads to take turns accessing shared data.
 If some thread locks the mutex
-and another attempts to do the same,
+and another tries to do the same,
 the second thread must wait---or \introduce{block}---until
 the first thread releases the lock,
 however long that may be.
@@ -717,10 +716,10 @@ In contrast, lockless synchronization methods
 ensure that the program is always making forward progress.
 These are \introduce{non-blocking}
 since no thread can cause another to wait indefinitely.
-Consider an audio streaming program,
+Consider a program that streams audio,
 or an embedded system where a sensor triggers an interrupt service routine
 \textsc{(isr)} when new data arrives.
-We need lock-free algorithms and data structures in these situations,
+We want lock-free algorithms and data structures in these situations,
 since blocking could break them.
 (In the first case, the user's audio will begin to stutter if sound data
 isn't provided at the bitrate it is consumed.
@@ -904,7 +903,7 @@ not just the specific one that was load-linked.
 This is especially troublesome for compare and swap,
 and is the raison d'être for \monobox{compare\_exchange\_weak}.
 To see why, consider a function that atomically multiplies a value,
-even though there's no atomic read-multiply-write instruction in any
+even though there's no atomic instruction to read-multiply-write in any
 common architecture.
 \begin{colfigure}
 \begin{minted}[fontsize=\codesize]{cpp}
@@ -922,12 +921,13 @@ void atomicMultiply(int by)
 \end{minted}
 \end{colfigure}
 Many lockless algorithms use \textsc{cas} loops like this to atomically update
-a variable even if calculating its new value isn't atomic. They:
+a variable when calculating its new value isn't atomic. They:
 \begin{enumerate}
 \item Read the variable.
 \item Perform some (non-atomic) operation on its value.
 \item \textsc{cas} the new value with the previous one.
-\item If the \textsc{cas} failed, someone beat us to the punch, so try again.
+\item If the \textsc{cas} failed, another thread beat us to the punch,
+    so try again.
 \end{enumerate}
 If we use \monobox{compare\_exchange\_strong} for this family of algorithms,
 the compiler must emit nested loops:
@@ -938,7 +938,7 @@ But unlike the \monobox{\_strong} version, a weak \textsc{cas}
 is allowed to fail spuriously, just like the \textsc{ll/sc} mechanism
 that implements it.
 So, with \monobox{compare\_exchange\_weak},
-the compiler is free to generate a single loop instead,
+the compiler is free to generate a single loop,
 since we don't care about the difference between retries from spurious
 \textsc{sc} failures and retries caused by another thread modifying our variable.
 
@@ -1080,8 +1080,9 @@ void releaseFoo(int i)
 }
 \end{minted}
 \end{colfigure}
-become:
 \begin{colfigure}
+become:
+
 \begin{minipage}{0.45\linewidth}
 \begin{lstlisting}[language={[ARM]Assembler}]
 acquireFoo:
@@ -1425,6 +1426,7 @@ One way to avoid it is to pad atomic variables with a cache line of
 unshared data, but this is obviously a large space-time tradeoff.
 
 \section{If concurrency is the question, \texttt{volatile} is not the answer.}
+% Todo: Add ongoing work from JF's CppCon 2019 talk?
 
 Before we go, we should lay a common misconception surrounding
 the \keyword{volatile} keyword to rest.
@@ -1534,8 +1536,8 @@ but hopefully you now know:
 \item Atomic \introduce{read-modify-write} operations.
 \item How atomic operations can be implemented on weakly-ordered hardware,
     and what implications this can have for a language-level \textsc{api}.
-\item How we can \emph{carefully} optimize lockless code using alternative
-    memory orderings.
+\item How we can \emph{carefully} optimize lockless code using
+    non-sequentially-consistent memory orderings.
 \item How \introduce{false sharing} can impact the performance of
     concurrent memory access.
 \item Why \keyword{volatile} is an inappropriate tool for inter-thread
