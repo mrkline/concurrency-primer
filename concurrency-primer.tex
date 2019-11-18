@@ -29,41 +29,12 @@
 \usepackage[fleqn]{amsmath}
 \setmainfont[
     Ligatures=TeX,
-    Numbers=Lowercase,
-    SmallCapsFeatures={StylisticSet=10}, % Set everything in \textsc{} as small caps
-    StylisticSet=01, % Slightly smaller quotes, asterisks, etc.
-    UprightFeatures={
-        SizeFeatures={
-            {Size={-12},Font=Equity Text A, SmallCapsFont=Equity Caps A},
-            {Size={12-},Font=Equity Text B, SmallCapsFont=Equity Caps B},
-        }
-    },
-    BoldFeatures={
-        SizeFeatures={
-            {Size={-12},Font=Equity Text A Bold, SmallCapsFont=Equity Caps A Bold},
-            {Size={12-},Font=Equity Text B Bold, SmallCapsFont=Equity Caps B Bold},
-        }
-    },
-    ItalicFeatures={
-        SizeFeatures={
-            {Size={-12},Font=Equity Text A Italic},
-            {Size={12-},Font=Equity Text B Italic},
-        }
-    },
-    BoldItalicFeatures={
-        SizeFeatures={
-            {Size={-12},Font=Equity Text A Bold Italic},
-            {Size={12-},Font=Equity Text B Bold Italic},
-        }
-    },
-]{Equity Text A}
-\setsansfont[Ligatures=TeX,
-             Style=Alternate, % Straight-legged R
-             UprightFont = *-55Rg,
-             ItalicFont = *-56It,
-             BoldFont = *-65Md,
-             BoldItalicFont = *-66MdIt
-             ]{NHaasGroteskTXPro}
+    StylisticSet=01, % single-story a and other Futura-like fun.
+    UprightFont=Jost-400-Book,
+    BoldFont=Jost-600-Semi,
+    ItalicFont=Jost-400-BookItalic,
+    BoldItalicFont=Jost-600-SemiItalic
+]{Jost}
 \setmonofont[Scale=MatchLowercase]{mononoki}
 
 \usepackage[italic]{mathastext}
@@ -132,7 +103,6 @@
 % (We're using lowercase ones for the body text.)
 % See http://tex.stackexchange.com/a/133186
 \usepackage{enumitem}
-\setlist[enumerate]{font=\addfontfeatures{Numbers=LowercaseOff}}
 
 % Custom footer
 \usepackage{scrlayer-scrpage}
@@ -203,8 +173,8 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 % C++ looks nicer if the ++ is in a monospace font and raised a bit.
 % Also, use uppercase numbers to match the capital C.
-\newcommand{\cpp}[1]{C\kern-0.1ex\raisebox{0.15ex}{\texttt{++}}{\addfontfeature{Numbers=LowercaseOff}#1}}
-\newcommand{\clang}[1]{C{\addfontfeature{Numbers=LowercaseOff}#1}}
+\newcommand{\cpp}[1]{C\kern-0.1ex\raisebox{0.15ex}{++}{#1}}
+\newcommand{\clang}[1]{C{#1}}
 \newcommand{\csharp}{C\raisebox{0.25ex}{\#}}
 
 \newcommand{\fig}[1]{Figure~\ref{#1}}
@@ -241,7 +211,7 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \begin{document}
 % Custom title instead of \maketitle
 \begin{center}
-\fontspec[Ligatures=TeX, StylisticSet=1]{NHaasGroteskDsPro-55Rg}\Large \textbf{\runtitle}
+\Large \textbf{\runtitle}
 \bigskip
 
 \large
