@@ -5,6 +5,10 @@
 \newcommand{\bodyfontsize}{10bp}
 \newcommand{\bodybaselineskip}{12bp}
 
+\newif\ifebook
+% Uncomment the line below to format as an ebook
+% \ebooktrue
+
 % We're using KOMA Script to hand-tune footnotes and TOC appearance.
 % It should be available in your texlive distribution,
 % which is how most distros package LaTeX.
@@ -13,11 +17,19 @@
 % Margins: see http://practicaltypography.com/page-margins.html and
 % http://practicaltypography.com/line-length.html
 % We're aiming for 80-ish characters per line.
+\ifebook
+\usepackage[
+    papersize={4.5in,6in},
+    footnotesep=\bodybaselineskip,
+    left=0.5in,right=0.5in,top=0.75in,bottom=0.75in,
+]{geometry}
+\else
 \usepackage[
     letterpaper,
     footnotesep=\bodybaselineskip,
     left=0.75in,right=0.75in,top=1in,bottom=1in,
 ]{geometry}
+\fi
 
 % Font specification.
 % Use Equity for the body text,
@@ -164,7 +176,10 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 \usepackage{metalogo} % for \LuaLaTeX
 
+\ifebook
+\else
 \usepackage{multicol}
+\fi
 \setlength\columnsep{2em}
 %\setlength\parskip{0em}
 \setlength\parindent{1.5em}
@@ -236,7 +251,10 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 
 % Consider more material for a given page, which helps a bit with footnotes.
 % See the multicol manual.
+\ifebook
+\else
 \setcounter{collectmore}{2}
+\fi
 
 \begin{document}
 % Custom title instead of \maketitle
@@ -253,7 +271,10 @@ commentstyle=\textcolor[rgb]{0.25,0.50,0.50}
 \end{center}
 \bigskip
 
+\ifebook
+\else
 \begin{adjustwidth}{1in}{1in}
+\fi
 \begin{center}
 \large \bfseries\itshape Abstract
 \end{center}
@@ -273,10 +294,16 @@ topic, but let's try to cover some fundamentals.
 \bigskip
 
 \tableofcontents
+\ifebook
+\else
 \end{adjustwidth}
+\fi
 \medskip
 
+\ifebook
+\else
 \begin{multicols}{2}
+\fi
 \section{Background}
 \label{background}
 
@@ -1555,7 +1582,10 @@ for an introduction.}
 
 \vspace{\baselineskip}
 \noindent Good luck and godspeed!
+\ifebook
+\else
 \end{multicols}
+\fi
 \newpage
 
 \appendix
@@ -1564,7 +1594,10 @@ for an introduction.}
 % sometimes conspire to put a rule on the last page anyways.
 \setfootnoterule{0pt}
 
+\ifebook
+\else
 \begin{adjustwidth}{1in}{1in}
+\fi
 \setlength\parskip{\baselineskip}
 \setlength\parindent{0pt}
 \section{Additional Resources}
