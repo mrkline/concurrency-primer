@@ -1154,7 +1154,10 @@ void threadB()
 \end{minted}
 \end{colfigure}
 
+\ifebook
+\else
 \columnbreak
+\fi
 \subsection{Relaxed}
 
 Relaxed atomic operations are used when a variable will be shared between threads,
@@ -1683,6 +1686,9 @@ with code in Matthias Tellen's
 The title is set in
 \href{http://www.fontbureau.com/NHG/}{\textsf{\small Neue Haas Grotesk}},
 a Helvetica restoration by Christian Schwartz.
+\ifebook
+\else
 \end{adjustwidth}
+\fi
 
 \end{document}
