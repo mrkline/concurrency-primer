@@ -384,7 +384,7 @@ Variables can be assigned to the same memory location if they're never used
 at the same time.
 Calculations can be made speculatively, before a branch is taken,
 then ignored if the compiler guessed incorrectly.\punckern\footnote{This is
-especially common when using profile-guided optimiation.}
+especially common when using profile-guided optimization.}
 %(These sorts of optimizations  sometimes called the ``as-if'' rule in \cpp{}.)
 
 Even if the compiler didn't change our code,
@@ -781,7 +781,7 @@ complexity and performance---concurrency is a perilous art.
 
 \section{Sequential consistency on weakly-ordered hardware}
 
-Different hardware architectures provide different ordering guarantees.
+Different hardware architectures provide different ordering guarantees,
 or \introduce{memory models}.
 For example, x64 is relatively \introduce{strongly-ordered},
 and can be trusted to preserve some system-wide order of
